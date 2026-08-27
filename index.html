@@ -1,0 +1,1371 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Iron Log</title>
+<meta name="theme-color" content="#141412">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Iron Log">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Oswald:wght@500;600;700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg: #141412; --surface: #1E1E1B; --surface-2: #26251F;
+    --text: #ECE8DE; --text-muted: #8B887E; --accent: #D6402A;
+    --gold: #C9A227; --success: #4F8F5B; --border: #33322C;
+  }
+  *{ box-sizing:border-box; }
+  html,body{ margin:0; padding:0; }
+  body{ background:var(--bg); color:var(--text); font-family:'Inter',system-ui,sans-serif; min-height:100vh; -webkit-tap-highlight-color:transparent; }
+  #app{ max-width:520px; margin:0 auto; padding-bottom:70px; }
+  .greeting{ font-family:'Inter',sans-serif; font-size:12.5px; color:var(--gold); font-weight:500; margin:0 0 2px; letter-spacing:.2px; }
+
+  .toast{ position:fixed; top:14px; left:50%; transform:translateX(-50%) translateY(-30px); max-width:480px; width:calc(100% - 40px); background:var(--gold); color:var(--bg); font-family:'Oswald',sans-serif; font-weight:600; font-size:13px; padding:12px 16px; border-radius:8px; text-align:center; z-index:60; opacity:0; transition:opacity .25s ease, transform .25s ease; box-shadow:0 6px 18px rgba(0,0,0,.4); }
+  .toast.hidden{ display:none; }
+  .toast.show{ opacity:1; transform:translateX(-50%) translateY(0); }
+
+  .page-tabs{ display:flex; gap:8px; padding:14px 20px 0; max-width:520px; margin:0 auto; }
+  .page-tab{ flex:1; font-family:'Oswald',sans-serif; font-weight:600; font-size:13px; letter-spacing:.5px; text-transform:uppercase; padding:10px; border-radius:8px 8px 0 0; background:var(--surface); border:1px solid var(--border); border-bottom:none; color:var(--text-muted); cursor:pointer; transition:background-color .15s ease, color .15s ease, border-color .15s ease; }
+  .page-tab.active{ background:var(--bg); color:var(--text); border-color:var(--gold); position:relative; }
+  .page-tab.active::after{ content:''; position:absolute; left:0; right:0; bottom:-1px; height:2px; background:var(--bg); }
+  .page.hidden{ display:none; }
+
+  .save-warning{ max-width:480px; margin:10px auto 0; padding:9px 12px; background:rgba(214,64,42,.12); border:1px solid var(--accent); border-radius:6px; font-size:12px; color:var(--text); display:flex; align-items:center; justify-content:space-between; gap:10px; }
+  .save-warning.hidden{ display:none; }
+  .save-warning button{ background:none; border:1px solid var(--accent); color:var(--accent); font-family:'Inter'; font-size:11px; padding:5px 9px; border-radius:4px; cursor:pointer; flex:none; }
+
+  .streak-chip{ background:var(--surface-2); border:1px solid var(--border); color:var(--accent); font-family:'JetBrains Mono',monospace; font-weight:600; font-size:12px; padding:6px 10px; border-radius:14px; cursor:pointer; white-space:nowrap; }
+  .streak-chip:active{ transform:scale(.95); }
+
+  .streak-hero{ padding:26px 20px 10px; text-align:center; }
+  .streak-big{ font-family:'Oswald',sans-serif; font-weight:700; font-size:56px; color:var(--accent); line-height:1; margin:6px 0 2px; }
+  .streak-big span{ font-size:18px; color:var(--text-muted); font-family:'Inter'; font-weight:500; display:block; margin-top:6px; }
+  .streak-best{ color:var(--text-muted); font-family:'JetBrains Mono',monospace; font-size:12px; margin:6px 0 0; }
+
+  .cal-section{ padding:6px 20px 4px; }
+  .cal-title{ font-family:'JetBrains Mono',monospace; font-size:10px; letter-spacing:1px; text-transform:uppercase; color:var(--text-muted); margin:0 0 8px; }
+  .cal-grid{ display:grid; grid-template-columns:repeat(7, 1fr); gap:5px; }
+  .cal-cell{ aspect-ratio:1; border-radius:4px; display:flex; align-items:center; justify-content:center; font-family:'JetBrains Mono',monospace; font-size:9px; color:var(--text-muted); background:var(--surface); border:1px solid var(--border); cursor:pointer; }
+  .cal-cell:active{ transform:scale(.92); }
+  .cal-cell.done{ background:var(--success); border-color:var(--success); color:#fff; }
+  .cal-cell.rest{ background:var(--surface-2); color:var(--text-muted); }
+  .cal-cell.missed{ background:rgba(214,64,42,.18); border-color:var(--accent); color:var(--accent); }
+  .cal-cell.pending{ border-color:var(--gold); color:var(--gold); }
+  .cal-legend{ display:flex; gap:14px; flex-wrap:wrap; margin:10px 0 4px; font-size:10.5px; color:var(--text-muted); }
+  .cal-legend span{ display:inline-flex; align-items:center; gap:5px; }
+  .cal-dot{ width:9px; height:9px; border-radius:2px; display:inline-block; }
+
+  .hero{ padding:26px 20px 16px; border-bottom:1px solid var(--border); background:radial-gradient(120% 140% at 15% 0%, rgba(214,64,42,.10), transparent 60%), radial-gradient(120% 140% at 100% 0%, rgba(201,162,39,.10), transparent 55%); }
+  .hero-top{ display:flex; align-items:baseline; justify-content:space-between; gap:12px; }
+  .hero-top h1{ font-family:'Oswald',sans-serif; font-weight:700; font-size:30px; letter-spacing:1px; margin:0; color:var(--text); }
+  .hero-top h1 span{ color:var(--accent); }
+  .day-title{ margin:14px 0 2px; display:flex; align-items:center; gap:8px; flex-wrap:wrap; }
+  .day-title h2{ font-family:'Oswald',sans-serif; font-weight:600; font-size:19px; margin:0; letter-spacing:.3px; }
+  .today-chip{ font-family:'JetBrains Mono',monospace; font-size:10px; letter-spacing:.5px; color:var(--bg); background:var(--gold); padding:2px 7px; border-radius:10px; text-transform:uppercase; }
+  .day-meta{ color:var(--text-muted); font-size:12.5px; margin:2px 0 14px; line-height:1.5; }
+
+  .stat-row{ display:flex; align-items:center; gap:10px; padding:3px 0; }
+  .stat-label{ font-family:'JetBrains Mono',monospace; font-size:11px; letter-spacing:1px; color:var(--text-muted); text-transform:uppercase; white-space:nowrap; }
+  .stat-value{ font-family:'JetBrains Mono',monospace; font-size:13px; color:var(--gold); margin-left:auto; }
+
+  .week{ display:flex; gap:6px; overflow-x:auto; padding:14px 20px; border-bottom:1px solid var(--border); scrollbar-width:none; }
+  .week::-webkit-scrollbar{ display:none; }
+  .day-pill{ flex:none; width:64px; text-align:center; padding:9px 4px 8px; border-radius:10px; background:var(--surface); border:1px solid var(--border); cursor:pointer; transition:background-color .15s ease, border-color .15s ease; }
+  .day-pill .dname{ font-family:'Oswald',sans-serif; font-weight:600; font-size:13px; letter-spacing:.5px; text-transform:uppercase; color:var(--text); }
+  .day-pill .dtype{ font-family:'JetBrains Mono',monospace; font-size:9px; letter-spacing:.2px; text-transform:uppercase; color:var(--text-muted); margin-top:3px; display:block; }
+  .day-pill.is-today{ border-color:var(--gold); }
+  .day-pill.selected{ background:var(--text); }
+  .day-pill.selected .dname, .day-pill.selected .dtype{ color:var(--bg); }
+  .day-pill:active{ transform:scale(.96); }
+
+  .preview-banner{ margin:14px 20px 0; padding:9px 12px; background:var(--surface-2); border:1px solid var(--border); border-radius:6px; font-size:12px; color:var(--text-muted); display:flex; align-items:center; justify-content:space-between; gap:10px; }
+  .preview-banner button{ background:none; border:1px solid var(--gold); color:var(--gold); font-family:'Inter'; font-size:11px; padding:5px 9px; border-radius:4px; cursor:pointer; flex:none; }
+
+  .rest-card{ margin:20px 20px 0; padding:26px 18px; background:var(--surface); border:1px solid var(--border); border-radius:8px; text-align:center; }
+  .rest-card h3{ font-family:'Oswald',sans-serif; font-size:20px; margin:0 0 8px; letter-spacing:.5px; }
+  .rest-card p{ color:var(--text-muted); font-size:13px; line-height:1.5; margin:0; }
+
+  main{ padding:16px 20px 0; }
+  .card{ position:relative; overflow:hidden; background:var(--surface); border:1px solid var(--border); border-radius:8px; padding:16px 16px 14px; margin-bottom:14px; }
+  @media (prefers-reduced-motion: no-preference){
+    .card{ animation: cardIn .28s ease both; }
+  }
+  @keyframes cardIn{ from{ opacity:0; transform:translateY(8px); } to{ opacity:1; transform:translateY(0); } }
+  .page-tab:focus-visible, .day-pill:focus-visible, .streak-chip:focus-visible, .copy-btn:focus-visible, .detail-toggle:focus-visible, .preview-banner button:focus-visible, .save-warning button:focus-visible, #restSkip:focus-visible{
+    outline:2px solid var(--gold); outline-offset:2px;
+  }
+  .card.prep-card{ border-color:var(--gold); }
+  .card-tag{ font-family:'JetBrains Mono',monospace; font-size:10px; letter-spacing:1px; text-transform:uppercase; color:var(--gold); }
+  .card-head{ display:flex; justify-content:space-between; align-items:flex-start; gap:10px; margin-top:3px; }
+  .card-name{ font-family:'Oswald',sans-serif; font-weight:600; font-size:17px; letter-spacing:.3px; }
+  .card-badge{ font-family:'JetBrains Mono',monospace; font-size:11.5px; color:var(--gold); white-space:nowrap; padding-top:2px; text-align:right; line-height:1.5; }
+  .card-badge .rest-note{ display:block; color:var(--text-muted); font-size:10.5px; }
+  .card-blurb{ color:var(--text-muted); font-size:12.5px; line-height:1.45; margin:6px 0 4px; }
+  .card-last{ font-family:'JetBrains Mono',monospace; font-size:11.5px; color:var(--text-muted); margin:2px 0 10px; display:flex; align-items:center; flex-wrap:wrap; gap:8px; }
+  .card-last b{ color:var(--text); font-weight:500; }
+  .card-last .suggest{ color:var(--success); }
+  .copy-btn{ background:none; border:1px solid var(--border); color:var(--text-muted); font-family:'Inter'; font-size:10.5px; padding:3px 8px; border-radius:10px; cursor:pointer; }
+  .copy-btn:active{ transform:scale(.95); }
+  .same-weight-btn{ display:block; width:100%; background:var(--surface-2); border:1px solid var(--border); color:var(--gold); font-family:'Inter'; font-size:11.5px; font-weight:600; padding:8px; border-radius:6px; cursor:pointer; margin:0 0 10px; }
+  .same-weight-btn:active{ transform:scale(.98); }
+
+  .weight-card{ text-align:center; }
+  .weight-big{ font-family:'Oswald',sans-serif; font-weight:700; font-size:44px; color:var(--gold); line-height:1; margin:10px 0 2px; }
+  .weight-big span{ font-size:14px; color:var(--text-muted); font-family:'Inter'; font-weight:500; display:block; margin-top:6px; text-transform:none; letter-spacing:0; }
+  .month-compare{ font-family:'JetBrains Mono',monospace; font-size:11.5px; color:var(--text-muted); margin:8px 0 0; }
+  .bw-input{ flex:1; background:var(--surface-2); border:1px solid var(--border); color:var(--text); font-family:'JetBrains Mono',monospace; font-size:14px; border-radius:6px; padding:9px 10px; min-width:0; }
+
+  .backup-btn{ flex:1; background:var(--surface-2); border:1px solid var(--border); color:var(--text); font-family:'Inter'; font-size:12px; font-weight:600; padding:9px 8px; border-radius:6px; cursor:pointer; }
+  .backup-btn.confirm{ width:100%; margin-top:8px; border-color:var(--accent); color:var(--accent); }
+  .backup-btn:active{ transform:scale(.97); }
+  .backup-area{ width:100%; margin-top:10px; background:var(--surface-2); border:1px solid var(--border); color:var(--text); font-family:'JetBrains Mono',monospace; font-size:10.5px; border-radius:6px; padding:8px; resize:vertical; }
+  .backup-area.hidden{ display:none; }
+  .backup-note{ font-size:11.5px; color:var(--success); margin:8px 0 0; min-height:14px; }
+  .backup-reminder{ font-size:11.5px; color:var(--gold); margin:8px 0 0; }
+
+  .detail-toggle{ background:none; border:none; color:var(--gold); font-family:'Inter'; font-size:12px; font-weight:600; padding:2px 0 10px; cursor:pointer; display:flex; align-items:center; gap:4px; }
+  .detail-toggle svg{ transition:transform .15s ease; }
+  .detail-toggle.open svg{ transform:rotate(180deg); }
+
+  .details{ margin:0 0 12px; padding:12px 12px 4px; background:var(--surface-2); border-radius:6px; }
+  .details.hidden{ display:none; }
+  .details h4{ margin:0 0 4px; font-family:'JetBrains Mono',monospace; font-size:10px; letter-spacing:1px; text-transform:uppercase; color:var(--text-muted); }
+  .details .target-line{ font-size:12.5px; margin:0 0 10px; color:var(--text); }
+  .details ol{ margin:0 0 10px; padding-left:18px; font-size:12.5px; line-height:1.55; color:var(--text); }
+  .details ol li{ margin-bottom:3px; }
+  .tip-box{ border-left:3px solid var(--gold); padding:7px 10px; margin:0 0 10px; font-size:12px; color:var(--text-muted); background:rgba(201,162,39,.06); }
+  .tip-box b{ color:var(--gold); }
+  .video-link{ display:inline-flex; align-items:center; gap:6px; background:var(--surface); border:1px solid var(--accent); color:var(--accent); font-family:'Inter'; font-size:12px; font-weight:600; padding:7px 12px; border-radius:20px; text-decoration:none; margin:2px 0 4px; }
+  .video-link:active{ transform:scale(.96); }
+  .pr-line{ font-size:12.5px; color:var(--gold); margin:0 0 10px; font-family:'JetBrains Mono',monospace; }
+  .trend-chart{ background:var(--bg); border:1px solid var(--border); border-radius:6px; padding:8px 6px 4px; margin:0 0 10px; }
+
+  .stamp{ position:absolute; top:14px; right:-30px; background:var(--accent); color:#fff; font-family:'Oswald',sans-serif; font-weight:700; font-size:11px; letter-spacing:2px; padding:4px 36px; transform:rotate(20deg); box-shadow:0 3px 8px rgba(0,0,0,.4); opacity:0; pointer-events:none; }
+  .card.stamped .stamp{ opacity:1; }
+  @media (prefers-reduced-motion: no-preference){ .card.stamped .stamp{ animation: stampIn .32s cubic-bezier(.2,1.4,.5,1); } }
+  @keyframes stampIn{ 0%{opacity:0; transform:rotate(20deg) scale(1.6);} 100%{opacity:1; transform:rotate(20deg) scale(1);} }
+
+  .set-row{ display:flex; align-items:center; gap:8px; padding:7px 0; border-top:1px solid var(--border); }
+  .set-row:first-of-type{ border-top:none; }
+  .set-label{ font-family:'JetBrains Mono',monospace; font-size:11px; color:var(--text-muted); width:22px; flex:none; }
+  .set-target{ font-family:'JetBrains Mono',monospace; font-size:10.5px; color:var(--gold); width:48px; flex:none; text-align:left; white-space:nowrap; }
+  .set-target.is-failure{ color:var(--accent); font-weight:700; letter-spacing:.3px; }
+  .set-input{ background:var(--surface-2); border:1px solid var(--border); color:var(--text); font-family:'JetBrains Mono',monospace; font-size:13.5px; border-radius:4px; padding:7px 8px; width:64px; min-width:0; }
+  .set-input.wide{ width:84px; }
+  .set-input:focus-visible{ outline:2px solid var(--gold); outline-offset:1px; }
+  .set-x{ color:var(--text-muted); font-size:12px; flex:none; }
+  .set-check{ margin-left:auto; flex:none; width:34px; height:34px; border-radius:50%; background:var(--surface-2); border:1px solid var(--border); color:var(--success); font-size:16px; line-height:1; cursor:pointer; }
+  .set-row.is-done .set-check{ background:var(--success); border-color:var(--success); color:#fff; }
+  .set-row.is-done .set-input{ border-color:var(--success); }
+  .set-check:focus-visible{ outline:2px solid var(--gold); outline-offset:2px; }
+  .set-check:active{ transform:scale(.92); }
+  .card.locked .set-input, .card.locked .set-check{ opacity:.4; pointer-events:none; }
+
+  .empty{ color:var(--text-muted); font-size:13px; padding:30px 4px; text-align:center; }
+
+  .modal-overlay{ position:fixed; inset:0; background:rgba(0,0,0,.6); z-index:70; display:flex; align-items:flex-end; justify-content:center; }
+  .modal-overlay.hidden{ display:none; }
+  .modal-card{ width:100%; max-width:520px; max-height:75vh; overflow-y:auto; background:var(--surface); border:1px solid var(--border); border-radius:16px 16px 0 0; padding:18px 20px 26px; }
+  .modal-head{ display:flex; justify-content:space-between; align-items:center; margin-bottom:10px; }
+  .modal-head h3{ font-family:'Oswald',sans-serif; font-size:17px; margin:0; }
+  .modal-close{ background:var(--surface-2); border:1px solid var(--border); color:var(--text-muted); width:28px; height:28px; border-radius:50%; font-size:13px; cursor:pointer; }
+  .modal-row{ display:flex; justify-content:space-between; gap:10px; padding:8px 0; border-top:1px solid var(--border); font-size:13px; }
+  .modal-row:first-of-type{ border-top:none; }
+  .modal-row span:first-child{ color:var(--text); }
+  .modal-vals{ color:var(--gold); font-family:'JetBrains Mono',monospace; font-size:12px; text-align:right; }
+  .modal-empty{ color:var(--text-muted); font-size:13px; text-align:center; padding:20px 0; }
+
+  .rest-bar{ position:fixed; left:0; right:0; bottom:0; max-width:520px; margin:0 auto; background:var(--surface); border-top:1px solid var(--gold); padding:11px 16px; display:flex; align-items:center; gap:12px; z-index:50; transform:translateY(0); transition:transform .25s ease; }
+  .rest-bar.hidden{ transform:translateY(120%); pointer-events:none; }
+  .rest-fill{ position:absolute; left:0; top:-2px; height:2px; background:var(--gold); width:0%; }
+  #restText{ font-family:'JetBrains Mono',monospace; font-size:13px; flex:1; }
+  #restSkip{ background:none; border:1px solid var(--border); color:var(--text-muted); font-family:'Inter'; font-size:11px; padding:6px 10px; border-radius:4px; cursor:pointer; flex:none; }
+</style>
+</head>
+<body>
+<div class="toast hidden" id="toast"></div>
+<div class="page-tabs">
+  <button class="page-tab active" type="button" data-page="workout">Workout</button>
+  <button class="page-tab" type="button" data-page="streak">🔥 Streak</button>
+</div>
+<div id="saveWarning" class="save-warning hidden">
+  <span>⚠️ Not saving right now — keep this open, or today's log could be lost.</span>
+  <button type="button" id="retrySave">Retry</button>
+</div>
+<div id="app">
+  <div id="workoutPage" class="page">
+    <div class="hero">
+      <div class="hero-top">
+        <h1>IRON <span>LOG</span></h1>
+        <div style="display:flex; gap:8px; align-items:center;">
+          <button class="streak-chip" id="streakChip" type="button">🔥 0</button>
+        </div>
+      </div>
+      <p class="greeting" id="greeting"></p>
+      <div class="day-title" id="dayTitle"></div>
+      <p class="day-meta" id="dayMeta"></p>
+      <div class="stat-row"><span class="stat-label">Sets today</span><div id="tallySvg"></div><span class="stat-value" id="tallyCount">0</span></div>
+      <div class="stat-row"><span class="stat-label">Volume today</span><span class="stat-value" id="volCount">0 kg</span></div>
+      <div class="stat-row"><span class="stat-label">This week</span><span class="stat-value" id="weekCount">0/6 days</span></div>
+    </div>
+    <nav class="week" id="week"></nav>
+    <div id="previewBanner"></div>
+    <main id="cardList"><p class="empty">Loading your log…</p></main>
+  </div>
+
+  <div id="streakPage" class="page hidden">
+    <div class="streak-hero">
+      <div class="day-meta" style="margin-bottom:0;">Every day counts, one at a time.</div>
+      <div class="streak-big" id="streakBig">0<span>day streak</span></div>
+      <p class="streak-best" id="streakBestLine">Best ever: 0 days</p>
+    </div>
+    <div class="cal-section">
+      <p class="cal-title">Last 35 Days</p>
+      <div class="cal-grid" id="calGrid"></div>
+      <div class="cal-legend">
+        <span><i class="cal-dot" style="background:var(--success)"></i>Completed</span>
+        <span><i class="cal-dot" style="background:var(--surface-2)"></i>Rest day</span>
+        <span><i class="cal-dot" style="background:rgba(214,64,42,.18); border:1px solid var(--accent);"></i>Missed</span>
+        <span><i class="cal-dot" style="background:transparent; border:1px solid var(--gold);"></i>Today</span>
+      </div>
+    </div>
+    <main style="padding-top:6px;">
+      <div class="card weight-card">
+        <span class="card-tag">Lifetime</span>
+        <div class="card-head"><span class="card-name">Total Weight Lifted</span></div>
+        <p class="card-blurb">Every completed weighted set, added up since day one.</p>
+        <div class="weight-big" id="weightBig">0<span>kg lifted, all time</span></div>
+        <p class="streak-best" id="weightSetsLine">0 sets logged</p>
+        <p class="month-compare" id="monthCompare"></p>
+      </div>
+
+      <div class="card bw-card">
+        <span class="card-tag">Body</span>
+        <div class="card-head"><span class="card-name">Bodyweight</span></div>
+        <p class="card-blurb">Track this alongside your lifts — strength climbing while weight holds steady is a good sign you're building muscle, not just getting heavier.</p>
+        <div style="display:flex; gap:8px; align-items:center; margin:8px 0 0;">
+          <input class="bw-input" id="bwInput" type="number" inputmode="decimal" placeholder="kg today">
+          <button class="backup-btn" id="bwLogBtn" type="button">Log</button>
+        </div>
+        <div class="trend-chart hidden" id="bwTrend"></div>
+      </div>
+
+      <div class="card backup-card">
+        <span class="card-tag">Data</span>
+        <div class="card-head"><span class="card-name">Backup &amp; Restore</span></div>
+        <p class="card-blurb">Your log lives only in this browser/device — not the cloud. Back it up occasionally so you never lose it.</p>
+        <p class="backup-reminder" id="backupReminder"></p>
+        <div style="display:flex; gap:8px; margin:10px 0 0;">
+          <button class="backup-btn" type="button" id="backupBtn">Show backup code</button>
+          <button class="backup-btn" type="button" id="restoreBtn">Restore from code</button>
+        </div>
+        <textarea id="backupArea" class="backup-area hidden" placeholder="Paste a backup code here to restore it" rows="4"></textarea>
+        <button class="backup-btn confirm hidden" type="button" id="restoreConfirm">Confirm restore (overwrites current log)</button>
+        <p class="backup-note" id="backupNote"></p>
+      </div>
+    </main>
+  </div>
+</div>
+
+<div class="rest-bar hidden" id="restBar">
+  <div class="rest-fill" id="restFill"></div>
+  <span id="restText">Resting…</span>
+  <button id="restSkip" type="button">Skip</button>
+</div>
+
+<div class="modal-overlay hidden" id="dayModal">
+  <div class="modal-card">
+    <div class="modal-head">
+      <h3 id="modalTitle"></h3>
+      <button class="modal-close" id="modalClose" type="button">✕</button>
+    </div>
+    <div id="modalBody"></div>
+  </div>
+</div>
+
+<script>
+(function(){
+  const SCHEDULE = [
+    {label:'Mon', type:'push'}, {label:'Tue', type:'pull'}, {label:'Wed', type:'legsA'},
+    {label:'Thu', type:'push'}, {label:'Fri', type:'pull'}, {label:'Sat', type:'legsB'}, {label:'Sun', type:'rest'},
+  ];
+  const DAY_TITLE = {push:'Push Day', pull:'Pull Day', legsA:'Leg Day — Quads', legsB:'Leg Day — Hams/Glutes', rest:'Rest Day'};
+  const REST_MESSAGES = [
+    'One rest day, so make it count: sleep, protein, and staying off your feet more than usual.',
+    'This is the only day your muscles get to actually rebuild — don\u2019t skip it even if you feel fine.',
+  ];
+
+  const WARMUPS = {
+    push: {
+      warmup: ['Arm circles forward & back — 30s each direction','March in place or jumping jacks — 1 min','Big arm swings / band-free shoulder dislocates — 1 min','Cat-Cow spinal mobility — 30s','10 slow bodyweight push-ups to prime the pattern'],
+      cooldown: ['Doorway chest stretch — 30s per side','Cross-body shoulder stretch — 30s per side','Overhead triceps stretch — 30s per side',"Child's pose — 1 min",'Cobra stretch for the chest — 30s'],
+    },
+    pull: {
+      warmup: ['Arm swings & scapular shrugs — 1 min','Relaxed dead hangs from the bar — 2×20s','Empty-hand row pattern in the air — 1 min','Cat-Cow spinal mobility — 30s','March in place — 1 min'],
+      cooldown: ['Hanging lat stretch, lean side to side — 30s per side','Cross-body rear delt stretch — 30s per side','Overhead lat/biceps stretch — 30s per side',"Child's pose reaching forward — 1 min",'Wrist & forearm stretch — 30s per side'],
+    },
+    legsA: {
+      warmup: ['Bodyweight squats — 10 slow reps','Leg swings front-to-back — 30s per leg','Leg swings side-to-side — 30s per leg','Walking high knees — 1 min','Glute bridges — 10 reps'],
+      cooldown: ['Standing quad stretch — 30s per side','Standing hamstring stretch — 30s per side','Calf stretch against a wall — 30s per side','Kneeling hip flexor stretch — 30s per side','Seated twist for the obliques — 30s per side'],
+    },
+    legsB: {
+      warmup: ['Glute bridges — 12 reps','Leg swings front-to-back — 30s per leg','Bodyweight hip hinges, practicing the RDL pattern — 1 min','Walking high knees — 1 min','Bodyweight squats — 8 reps'],
+      cooldown: ["Standing hamstring stretch — 30s per side","Kneeling hip flexor stretch — 30s per side","Figure-4 glute stretch — 30s per side","Child's pose for the lower back — 1 min",'Calf stretch against a wall — 30s per side'],
+    },
+  };
+
+  const EXERCISES = [
+    {id:'pushup', day:['push'], tag:'Chest', name:'Weighted Push-Up', sets:4, rest:90, badge:'4×8–15', type:'weight', targets:[10,10,10,'F'],
+      blurb:'Full range of motion, unlike a floor press — loaded push-ups match bench press for chest size and strength.',
+      muscle:'Chest, front delts, triceps, core',
+      how:['Hands slightly wider than shoulders, body in a straight line from head to heels.','Lower until your chest nearly touches the floor, elbows around 45° from your torso.','Press back up without letting your hips sag.'],
+      tip:'Add a loaded backpack or elevate your feet on the mattress once reps pass 15.'},
+    {id:'ohp', day:['push'], tag:'Shoulders', name:'Standing DB Press', sets:4, rest:120, badge:'4×6–10', type:'weight', targets:[8,8,8,'F'],
+      blurb:'The core mass-and-strength builder for shoulders with dumbbells — the heaviest lift of the day, so it gets the longest rest.',
+      muscle:'Front & side delts, triceps, upper chest',
+      how:['Start with dumbbells at shoulder height, palms forward.','Press straight overhead until your arms lock out, without arching your lower back.','Lower under control back to your shoulders.'],
+      tip:'Brace your core hard — this protects your spine on a standing overhead press.'},
+    {id:'deficit_pushup', day:['push'], tag:'Chest', name:'Deficit Push-Up', sets:3, rest:75, badge:'3×8–12', type:'bodyweight', targets:[10,10,'F'],
+      blurb:"Solves the floor problem entirely — elevating your hands on your own dumbbells lets your chest drop below hand level for a real stretch. Jeff Nippard's own chest-exercise rankings put this above a standard push-up for exactly that reason.",
+      muscle:'Chest (deep stretch), front delts, triceps, serratus',
+      how:['Place two dumbbells shoulder-width apart on the floor, one under each hand.','Get into push-up position gripping the dumbbells, body in a straight line head to heels.','Lower slowly until your chest drops below the level of your hands — that dip below hand-height is the entire point.','Press back up under control without flaring your elbows out wide.'],
+      tip:'Start with the dumbbells lying on their side (small deficit) before standing them on end for a bigger one, as your shoulders adapt.'},
+    {id:'lat_raise', day:['push'], tag:'Shoulders', name:'Lean-Away Lateral Raise', sets:3, rest:60, badge:'3×12–15/side', type:'weight', targets:[12,12,'F'],
+      blurb:"An upgrade on the standard two-arm raise — a normal lateral raise has zero tension at the very bottom, and leaning away fixes exactly that. It's the technique top strength coaches now recommend over the basic version.",
+      muscle:'Side deltoid',
+      how:['Hold onto a doorframe, wall edge, or the pull-up bar post with your inside hand, and lean your torso away from the working arm.','Raise the outside arm out to shoulder height, leading with your elbow.','Lower slowly under control, then finish all reps before switching sides.'],
+      tip:'Leaning away is what creates real tension even at the bottom of the stretch — a normal standing raise misses that part of the range entirely.'},
+    {id:'oh_ext', day:['push'], tag:'Triceps', name:'Overhead DB Triceps Ext.', sets:3, rest:60, badge:'3×10–12', type:'weight', targets:[10,10,'F'],
+      blurb:'Stretch-position loading for the long head — the triceps head with the most growth potential.',
+      muscle:'Triceps, long head emphasis',
+      how:['Hold one dumbbell overhead with both hands, upper arms close to your ears.','Lower it behind your head until your forearms pass parallel to the floor.','Extend back up without flaring your elbows out.'],
+      tip:'The long head only gets a full stretch with your arms overhead — this is the variation it needs most.'},
+    {id:'plank', day:['push'], tag:'Core', name:'Plank', sets:3, rest:45, badge:'3×30–60s', type:'time', targets:[40,40,'F'],
+      blurb:'Anti-extension core stability that carries over to every lift above.',
+      muscle:'Deep core, obliques, shoulders (isometric)',
+      how:['Forearms on the floor, elbows under your shoulders, body in a straight line.','Squeeze your glutes and abs — don\'t let your hips sag or pike up.','Breathe normally and hold for time.'],
+      tip:'A harder, shorter plank with perfect form beats a long one with a sagging back.'},
+
+    {id:'pullup', day:['pull'], tag:'Back', name:'Pull-Up', sets:4, rest:120, badge:'4×AMRAP', type:'bodyweight', targets:['F','F','F','F'],
+      blurb:'Unmatched for lat width with just a bar — the heaviest compound of the day, so it gets the longest rest.',
+      muscle:'Lats, mid-back, biceps, rear delts',
+      how:['Full hang at the bottom, shoulder blades set, not shrugged up.','Pull your chest toward the bar, driving your elbows down and back.','Lower under control to a full hang each rep.'],
+      tip:'Once you clear 12+ clean reps, add weight in a backpack rather than chasing more reps.'},
+    {id:'db_row', day:['pull'], tag:'Back', name:'One-Arm DB Row', sets:3, rest:90, badge:'3×8–12/side', type:'weight', targets:[10,10,'F'],
+      blurb:'Builds back thickness and balances pull-up volume.',
+      muscle:'Lats, mid-back, rear delt, biceps',
+      how:['Support one hand and knee on a stable surface, flat back.','Row the dumbbell to your hip, driving your elbow up and back.','Lower with control until your arm and shoulder fully stretch.'],
+      tip:'Avoid rotating your torso to "help" the weight up — that steals work from your back.'},
+    {id:'reverse_fly', day:['pull'], tag:'Rear Delts', name:'Bent-Over Reverse Fly', sets:3, rest:45, badge:'3×12–20', type:'weight', targets:[15,15,'F'],
+      blurb:'Rear delts are one of the most neglected muscles in a home program — they barely get worked by presses or curls.',
+      muscle:'Rear deltoids, rhomboids, mid-traps',
+      how:['Hinge forward at the hips to about 45–90°, flat back, dumbbells hanging straight down.','Raise your arms out to the sides, leading with your elbows, squeezing your shoulder blades together at the top.','Lower slowly back to the start under control.'],
+      tip:'Use lighter weight than you think — heavy loads let your traps and lower back take over instead of your rear delts.'},
+    {id:'shrug', day:['pull'], tag:'Traps', name:'Dumbbell Shrug', sets:3, rest:45, badge:'3×8–12', type:'weight', targets:[10,10,'F'],
+      blurb:'A simple, direct isolation move — EMG research shows shrugs hit the upper traps harder than almost anything else you can do with dumbbells.',
+      muscle:'Upper trapezius',
+      how:['Stand tall holding dumbbells at your sides, arms straight.','Shrug your shoulders straight up toward your ears — no rolling.','Pause and squeeze at the top for a second, then lower under control.'],
+      tip:"Don't use your biceps to help lift — keep your arms completely straight throughout."},
+    {id:'incline_curl', day:['pull'], tag:'Biceps', name:'Incline DB Curl', sets:3, rest:60, badge:'3×10–12', type:'weight', targets:[10,10,'F'],
+      blurb:'Loads the bicep at full stretch — among the most effective curl variations studied.',
+      muscle:'Biceps, long head, full stretch',
+      how:['Sit back at an incline (prop against the mattress or a wall), arms hanging straight down.','Curl the dumbbells up without swinging your elbows forward.','Lower all the way to a full stretch at the bottom.'],
+      tip:"The dead hang at the bottom is the whole point of this variation — don't cut it short."},
+    {id:'hammer_curl', day:['pull'], tag:'Biceps', name:'Hammer Curl', sets:3, rest:60, badge:'3×10–12', type:'weight', targets:[10,10,'F'],
+      blurb:'Hits the brachialis and forearms, adding width under the biceps.',
+      muscle:'Brachialis, brachioradialis (forearms), biceps',
+      how:['Palms facing each other throughout the movement.','Curl up keeping your elbows pinned to your sides.','Lower under control.'],
+      tip:'This is the exercise that adds width under the bicep peak, not just size on top.'},
+    {id:'wrist_curl', day:['pull'], tag:'Forearms', name:'Dumbbell Wrist Curl', sets:2, rest:30, badge:'2×12–15 ea way', type:'weight', targets:[12,'F'],
+      blurb:'Small muscles, but they finish the job — flexors and extensors both need direct work for complete forearm development.',
+      muscle:'Forearm flexors and extensors',
+      how:['Rest your forearm on your thigh, palm up, wrist hanging off the edge. Curl the dumbbell up using just your wrist, then lower.','After that set, flip your palm face-down and repeat to hit the top of the forearm.','Keep your forearm completely still throughout — only your hand moves.'],
+      tip:'Train both directions. Most people only do the palm-up version and end up with an imbalanced forearm.'},
+    {id:'hanging_raise', day:['pull'], tag:'Core', name:'Hanging Leg Raise', sets:3, rest:45, badge:'3×10–15', type:'bodyweight', targets:[10,10,'F'],
+      blurb:'The best ab move your pull-up bar gives you — hits the lower abs hard.',
+      muscle:'Lower abs, hip flexors, grip',
+      how:['Hang from the bar with a full grip, legs straight or knees bent.','Raise your legs or knees toward your chest without swinging.','Lower slowly under control.'],
+      tip:'Control the descent — swinging turns this into momentum, not ab work.'},
+    {id:'prone_y_raise', day:['pull'], tag:'Lower Traps', name:'Prone Y-Raise', sets:3, rest:45, badge:'3×15–20', type:'bodyweight', targets:[15,15,'F'],
+      blurb:'Your lower traps were only getting indirect work from everything else this session — EMG research shows this move activates them better than almost anything else you can do.',
+      muscle:'Lower trapezius, rear delts, rhomboids',
+      how:['Lie face down on the mattress or floor, arms extended forward at roughly 45° from your body to form a Y, thumbs pointing up.','Keeping your arms straight, lift them a few inches off the floor, leading with your thumbs.','Squeeze your shoulder blades down and together at the top, hold briefly, then lower under control.'],
+      tip:"This is a small, controlled movement, not a big one. If your neck or upper traps are doing the work instead of your upper back, the range is too big."},
+
+    {id:'goblet_squat', day:['legsA'], tag:'Legs', name:'Goblet Squat', sets:4, rest:120, badge:'4×8–12', type:'weight', targets:[10,10,10,'F'],
+      blurb:'The most knee- and back-friendly way to load a squat pattern with one dumbbell — the main strength lift of the day.',
+      muscle:'Quads, glutes, core',
+      how:['Hold one dumbbell vertically against your chest.','Squat down between your knees, keeping your torso upright.','Drive through your whole foot back to standing.'],
+      tip:'Let your elbows brush your inner knees at the bottom to confirm depth.'},
+    {id:'lunge', day:['legsA'], tag:'Legs', name:'Walking Lunge', sets:3, rest:75, badge:'3×10–12/leg', type:'weight', targets:[10,10,'F'],
+      blurb:'Single-leg strength, hip mobility, and coordination in one movement.',
+      muscle:'Quads, glutes, hamstrings, balance',
+      how:['Step forward into a lunge, back knee dropping toward the floor.','Push through your front heel to step into the next lunge.','Keep your torso upright throughout.'],
+      tip:'A longer step targets the glutes more; a shorter step shifts emphasis to the quads.'},
+    {id:'hanging_oblique', day:['legsA'], tag:'Obliques', name:'Hanging Oblique Raise', sets:3, rest:45, badge:'3×10–12/side', type:'bodyweight', targets:[10,10,'F'],
+      blurb:'Uses the equipment you already have for real oblique training — a better pick than a standing side bend for this muscle.',
+      muscle:'Obliques, hip flexors, grip',
+      how:['Hang from the bar with a full grip.','Raise your knees up and toward one shoulder, keeping the motion controlled.','Lower and repeat on the other side, alternating.'],
+      tip:'This isolates rotation and lateral flexion, instead of just loading your spine the way a side bend does.'},
+    {id:'lateral_lunge', day:['legsA'], tag:'Hips', name:'Lateral Lunge', sets:3, rest:60, badge:'3×10–12/side', type:'weight', targets:[10,10,'F'],
+      blurb:"The one plane of motion nothing else here trains — side-to-side movement works your hip abductors and adductors, which every squat and forward lunge otherwise skips entirely.",
+      muscle:'Glute medius, adductors, quads (working leg)',
+      how:['Stand tall, holding a dumbbell at your chest if using one.','Step one leg out wide to the side, bending that knee and sitting your hips back while keeping the other leg straight.','Push through the bent leg\'s heel to return to standing, then repeat on the other side.'],
+      tip:'Keep your toes pointed forward on both feet throughout — letting the stepping foot turn out lets your hips off the hook.'},
+    {id:'calf_raise', day:['legsA','legsB'], tag:'Calves', name:'Single-Leg Calf Raise', sets:3, rest:45, badge:'3×15/leg', type:'weight', targets:[15,15,'F'],
+      blurb:'Calves respond well to frequent training, so this appears on both leg days.',
+      muscle:'Calves (gastrocnemius/soleus)',
+      how:['Stand on one foot on a step or thick book, holding a dumbbell for load.','Lower your heel below the step for a deep stretch.','Rise onto your toes as high as possible, pause, then lower.'],
+      tip:'Slow the lowering phase down — calves respond exceptionally well to time under stretch.'},
+
+    {id:'rdl', day:['legsB'], tag:'Legs', name:'DB Romanian Deadlift', sets:3, rest:105, badge:'3×8–12', type:'weight', targets:[10,10,'F'],
+      blurb:'Best hamstring/glute stretch-position move you can load with dumbbells alone — the main lift of this day.',
+      muscle:'Hamstrings, glutes, lower back',
+      how:['Dumbbells in front of your thighs, a slight knee bend held constant.','Hinge at the hips, pushing them back as the weights slide down your legs.','Stop at a deep hamstring stretch, then drive your hips forward to stand.'],
+      tip:"This is a hip hinge, not a squat — your knees barely bend throughout."},
+    {id:'bulgarian_split_squat', day:['legsB'], tag:'Legs', name:'Bulgarian Split Squat', sets:3, rest:90, badge:'3×8–12/leg', type:'weight', targets:[10,10,'F'],
+      blurb:'The single-leg complement to your goblet squat — adds variety and corrects side-to-side imbalances.',
+      muscle:'Quads, glutes, hamstrings (unilateral)',
+      how:['Rest the top of one foot behind you on a sturdy chair, low step, or stack of books.','Lower straight down until your front thigh is roughly parallel to the floor.','Drive through your front heel to stand, keeping most of your weight on the front leg.'],
+      tip:'Keep the rear foot lower rather than higher — an overly high surface hurts your balance more than it helps.'},
+    {id:'bird_dog', day:['legsB'], tag:'Lower Back', name:'Bird Dog', sets:3, rest:45, badge:'3×10–12/side', type:'bodyweight', targets:[10,10,'F'],
+      blurb:'Swapped in for the Superman hold after rechecking the research — it trains the same lower-back stabilizers with far less spinal compression.',
+      muscle:'Erector spinae, deep core (transverse abdominis), glutes, shoulder stabilizers',
+      how:['Start on hands and knees, hands under shoulders, knees under hips.','Extend one arm forward and the opposite leg back at the same time, keeping your hips and shoulders level.','Hold briefly at full extension, then return under control and switch sides.'],
+      tip:'Keep your lower back flat, not arched — the goal is a dead-still spine while your limbs move, not a backbend.'},
+  ];
+
+  const STORAGE_KEY = 'workout-log';
+  const hasClaudeStorage = typeof window.storage !== 'undefined' && window.storage && typeof window.storage.get === 'function';
+
+  async function storageGet(key){
+    if(hasClaudeStorage) return await window.storage.get(key, false);
+    const v = localStorage.getItem(key);
+    return v !== null ? {key, value: v} : null;
+  }
+  async function storageSet(key, value){
+    if(hasClaudeStorage) return await window.storage.set(key, value, false);
+    localStorage.setItem(key, value);
+    return {key, value};
+  }
+  const jsToScheduleIndex = (jsDay) => jsDay===0 ? 6 : jsDay-1;
+  function todayIndex(){ return jsToScheduleIndex(new Date().getDay()); }
+  function todayStr(){ return new Date().toLocaleDateString('en-CA'); }
+
+  let data = {};
+  let selectedIndex = todayIndex();
+  let saveTimer = null;
+  let restInterval = null;
+  let currentStreak = 0;
+  let currentLifetime = {sets:0, vol:0};
+  let expandedDetails = new Set();
+
+  const dayTitleEl = document.getElementById('dayTitle');
+  const dayMetaEl = document.getElementById('dayMeta');
+  const weekEl = document.getElementById('week');
+  const previewBannerEl = document.getElementById('previewBanner');
+  const cardListEl = document.getElementById('cardList');
+  const tallySvgEl = document.getElementById('tallySvg');
+  const tallyCountEl = document.getElementById('tallyCount');
+  const volCountEl = document.getElementById('volCount');
+  const weekCountEl = document.getElementById('weekCount');
+  const streakChip = document.getElementById('streakChip');
+  const streakBigEl = document.getElementById('streakBig');
+  const streakBestLineEl = document.getElementById('streakBestLine');
+  const calGridEl = document.getElementById('calGrid');
+  const weightBigEl = document.getElementById('weightBig');
+  const weightSetsLineEl = document.getElementById('weightSetsLine');
+  const greetingEl = document.getElementById('greeting');
+  const backupBtn = document.getElementById('backupBtn');
+  const restoreBtn = document.getElementById('restoreBtn');
+  const backupArea = document.getElementById('backupArea');
+  const restoreConfirm = document.getElementById('restoreConfirm');
+  const backupNote = document.getElementById('backupNote');
+  const backupReminderEl = document.getElementById('backupReminder');
+  const restBar = document.getElementById('restBar');
+  const restText = document.getElementById('restText');
+  const restFill = document.getElementById('restFill');
+  const restSkip = document.getElementById('restSkip');
+  const toastEl = document.getElementById('toast');
+  const dayModal = document.getElementById('dayModal');
+  const modalTitleEl = document.getElementById('modalTitle');
+  const modalBodyEl = document.getElementById('modalBody');
+  const modalCloseEl = document.getElementById('modalClose');
+
+  function fmtRest(s){
+    if(s < 60) return `${s}s`;
+    const m = Math.floor(s/60), r = s%60;
+    return `${m}:${String(r).padStart(2,'0')}`;
+  }
+
+  function estimateLiftMinutes(list){
+    let total = 0;
+    list.forEach(ex => { total += (ex.rest + 30) * ex.sets; });
+    total += list.length * 60;
+    return Math.round(total/60);
+  }
+
+  function getTomorrowLabel(){
+    const t = new Date();
+    t.setDate(t.getDate() + 1);
+    const idx = jsToScheduleIndex(t.getDay());
+    return DAY_TITLE[SCHEDULE[idx].type];
+  }
+
+  function showToast(msg){
+    toastEl.textContent = msg;
+    toastEl.classList.remove('hidden');
+    requestAnimationFrame(() => toastEl.classList.add('show'));
+    setTimeout(() => {
+      toastEl.classList.remove('show');
+      setTimeout(() => toastEl.classList.add('hidden'), 300);
+    }, 4000);
+  }
+
+  let audioCtx = null;
+  function ensureAudioCtx(){
+    if(!audioCtx){
+      try{ audioCtx = new (window.AudioContext || window.webkitAudioContext)(); }catch(e){}
+    }
+    return audioCtx;
+  }
+  function primeAudio(){
+    const ctx = ensureAudioCtx();
+    if(ctx && ctx.state === 'suspended') ctx.resume().catch(()=>{});
+  }
+  function playChime(){
+    const ctx = ensureAudioCtx();
+    if(!ctx) return;
+    try{
+      [880, 1046].forEach((freq, i) => {
+        setTimeout(() => {
+          const osc = ctx.createOscillator();
+          const gain = ctx.createGain();
+          osc.type = 'sine';
+          osc.frequency.value = freq;
+          gain.gain.setValueAtTime(0.0001, ctx.currentTime);
+          gain.gain.exponentialRampToValueAtTime(0.28, ctx.currentTime + 0.02);
+          gain.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + 0.4);
+          osc.connect(gain).connect(ctx.destination);
+          osc.start();
+          osc.stop(ctx.currentTime + 0.42);
+        }, i * 150);
+      });
+    }catch(e){}
+  }
+  function vibrateDone(){
+    if(navigator.vibrate){ try{ navigator.vibrate([120,60,120]); }catch(e){} }
+  }
+
+  function startRest(seconds){
+    clearInterval(restInterval);
+    let remaining = seconds;
+    restBar.classList.remove('hidden');
+    function tick(){
+      const m = Math.floor(remaining/60), s = remaining%60;
+      restText.textContent = `Resting… ${m}:${String(s).padStart(2,'0')}`;
+      restFill.style.width = `${100 - (remaining/seconds*100)}%`;
+      if(remaining <= 0){
+        clearInterval(restInterval);
+        restText.textContent = 'Rest done — go!';
+        playChime();
+        vibrateDone();
+        setTimeout(() => restBar.classList.add('hidden'), 1500);
+        return;
+      }
+      remaining--;
+    }
+    tick();
+    restInterval = setInterval(tick, 1000);
+  }
+  restSkip.addEventListener('click', () => { clearInterval(restInterval); restBar.classList.add('hidden'); });
+
+  function emptySet(type){
+    if(type==='weight') return {weight:'', reps:'', done:false};
+    if(type==='bodyweight') return {reps:'', done:false};
+    return {seconds:'', done:false};
+  }
+
+  function ensureToday(exId, ex){
+    if(!data[todayStr()]) data[todayStr()] = {};
+    if(!data[todayStr()][exId]){
+      data[todayStr()][exId] = Array.from({length: ex.sets}, () => emptySet(ex.type));
+    }
+    return data[todayStr()][exId];
+  }
+
+  function getBodyweightPoints(){
+    const log = data._meta?.bodyweightLog || {};
+    return Object.keys(log).sort().slice(-10).map(d => log[d]);
+  }
+  function logBodyweight(kg){
+    if(!data._meta) data._meta = {bestStreak:0};
+    if(!data._meta.bodyweightLog) data._meta.bodyweightLog = {};
+    data._meta.bodyweightLog[todayStr()] = kg;
+    persist();
+  }
+  function renderBodyweight(){
+    const points = getBodyweightPoints();
+    const el = document.getElementById('bwTrend');
+    if(points.length >= 2){
+      el.innerHTML = trendSVG(points);
+      el.classList.remove('hidden');
+    } else if(points.length === 1){
+      el.innerHTML = `<p style="text-align:center; color:var(--text-muted); font-size:11px; padding:8px 0; margin:0;">Log one more day to see a trend</p>`;
+      el.classList.remove('hidden');
+    } else {
+      el.classList.add('hidden');
+    }
+  }
+  document.getElementById('bwLogBtn').addEventListener('click', () => {
+    const input = document.getElementById('bwInput');
+    const val = Number(input.value);
+    if(!val) return;
+    logBodyweight(val);
+    input.value = '';
+    renderBodyweight();
+  });
+
+  function computeMonthStats(monthsAgo){
+    const now = new Date();
+    const target = new Date(now.getFullYear(), now.getMonth() - monthsAgo, 1);
+    const targetY = target.getFullYear(), targetM = target.getMonth();
+    let sets = 0, vol = 0;
+    Object.keys(data).forEach(d => {
+      if(d === '_meta') return;
+      const dt = new Date(d + 'T00:00:00');
+      if(dt.getFullYear() === targetY && dt.getMonth() === targetM){
+        Object.entries(data[d]).forEach(([exId, setsArr]) => {
+          const ex = EXERCISES.find(x => x.id === exId);
+          setsArr.forEach(s => { if(s.done){ sets++; if(ex && ex.type==='weight') vol += (Number(s.weight)||0) * (Number(s.reps)||0); } });
+        });
+      }
+    });
+    return {sets, vol: Math.round(vol)};
+  }
+  function monthCompareText(){
+    const thisMonth = computeMonthStats(0);
+    const lastMonth = computeMonthStats(1);
+    if(lastMonth.vol > 0){
+      const pct = Math.round(((thisMonth.vol - lastMonth.vol) / lastMonth.vol) * 100);
+      return `This month: ${thisMonth.vol.toLocaleString()}kg — ${pct>=0?'▲':'▼'} ${Math.abs(pct)}% vs last month`;
+    }
+    if(thisMonth.vol > 0) return `This month: ${thisMonth.vol.toLocaleString()}kg — check back next month for a comparison`;
+    return '';
+  }
+
+  function getHistoryPoints(exId, ex){
+    const dates = Object.keys(data).filter(d => d !== '_meta').sort();
+    const points = [];
+    dates.forEach(d => {
+      const sets = (data[d]||{})[exId];
+      if(!sets) return;
+      const done = sets.filter(s => s.done);
+      if(!done.length) return;
+      let val;
+      if(ex.type==='weight') val = Math.max(...done.map(s => Number(s.weight)||0));
+      else if(ex.type==='bodyweight') val = Math.max(...done.map(s => Number(s.reps)||0));
+      else val = Math.max(...done.map(s => Number(s.seconds)||0));
+      points.push(val);
+    });
+    return points.slice(-10);
+  }
+
+  function trendSVG(points){
+    const w = 260, h = 56, pad = 6;
+    const min = Math.min(...points), max = Math.max(...points);
+    const range = (max - min) || 1;
+    const stepX = points.length > 1 ? (w - pad*2) / (points.length-1) : 0;
+    const coords = points.map((v,i) => {
+      const x = pad + i*stepX;
+      const y = h - pad - ((v-min)/range) * (h-pad*2);
+      return {x, y};
+    });
+    const path = 'M' + coords.map(c => `${c.x.toFixed(1)},${c.y.toFixed(1)}`).join(' L');
+    const last = coords[coords.length-1];
+    return `<svg viewBox="0 0 ${w} ${h}" width="100%" height="${h}" preserveAspectRatio="none">
+      <path d="${path}" style="fill:none; stroke:var(--gold); stroke-width:2; stroke-linecap:round; stroke-linejoin:round;"/>
+      <circle cx="${last.x.toFixed(1)}" cy="${last.y.toFixed(1)}" r="3.5" style="fill:var(--gold);"/>
+    </svg>`;
+  }
+
+  function getDisplaySets(exId, ex, locked){
+    if(!locked) return ensureToday(exId, ex);
+    const done = lastSessionSets(exId);
+    const result = [];
+    for(let i=0; i<ex.sets; i++){
+      result.push(done && done[i] ? done[i] : emptySet(ex.type));
+    }
+    return result;
+  }
+
+  function persist(){
+    clearTimeout(saveTimer);
+    saveTimer = setTimeout(() => attemptSave(0), 300);
+  }
+
+  async function attemptSave(retryCount){
+    try{
+      const result = await storageSet(STORAGE_KEY, JSON.stringify(data));
+      if(!result) throw new Error('No result returned from storage');
+      setSaveWarning(false);
+    }catch(e){
+      console.error('Save failed', e);
+      if(retryCount < 3){
+        setTimeout(() => attemptSave(retryCount+1), 1000 * (retryCount+1));
+      }else{
+        setSaveWarning(true);
+      }
+    }
+  }
+
+  function setSaveWarning(show){
+    const el = document.getElementById('saveWarning');
+    if(!el) return;
+    el.classList.toggle('hidden', !show);
+  }
+
+  function lastSessionSets(exId){
+    const dates = Object.keys(data).filter(d => d !== todayStr() && d !== '_meta').sort().reverse();
+    for(const d of dates){
+      const sets = data[d][exId];
+      if(!sets) continue;
+      const done = sets.filter(s => s.done);
+      if(done.length) return done;
+    }
+    return null;
+  }
+
+  function lastSessionSummary(exId, ex){
+    const done = lastSessionSets(exId);
+    if(!done) return null;
+    if(ex.type==='weight') return done.map(s => `${s.weight||0}×${s.reps||0}`).join(', ');
+    if(ex.type==='bodyweight') return done.map(s => `${s.reps||0}`).join(', ') + ' reps';
+    return done.map(s => `${s.seconds||0}s`).join(', ');
+  }
+
+  function parseBadgeTop(badge){
+    const nums = (badge.match(/\d+/g)||[]).map(Number);
+    return nums.length ? Math.max(...nums) : null;
+  }
+
+  function targetThreshold(ex){
+    if(!ex.targets) return parseBadgeTop(ex.badge);
+    const nums = ex.targets.filter(t => typeof t === 'number');
+    return nums.length ? Math.max(...nums) : null;
+  }
+
+  function suggestNext(ex){
+    if(ex.type !== 'weight') return null;
+    const done = lastSessionSets(ex.id);
+    if(!done || !done.length) return null;
+    const top = targetThreshold(ex);
+    const maxReps = Math.max(...done.map(s => Number(s.reps)||0));
+    const lastWeight = Number(done[0].weight)||0;
+    if(!lastWeight) return null;
+    if(top && maxReps >= top) return `${Math.round((lastWeight+2.5)*10)/10}`;
+    return `${lastWeight}`;
+  }
+
+  function computePR(exId, ex){
+    let best = null;
+    Object.keys(data).forEach(d => {
+      if(d === '_meta') return;
+      const sets = (data[d]||{})[exId];
+      if(!sets) return;
+      sets.forEach(s => {
+        if(!s.done) return;
+        if(ex.type==='weight'){
+          const w = Number(s.weight)||0, r = Number(s.reps)||0;
+          if(!best || w>best.weight || (w===best.weight && r>best.reps)) best={weight:w, reps:r};
+        } else if(ex.type==='bodyweight'){
+          const r = Number(s.reps)||0;
+          if(best==null || r>best) best=r;
+        } else {
+          const sec = Number(s.seconds)||0;
+          if(best==null || sec>best) best=sec;
+        }
+      });
+    });
+    if(best==null) return null;
+    if(ex.type==='weight') return `${best.weight}×${best.reps}`;
+    if(ex.type==='bodyweight') return `${best} reps`;
+    return `${best}s`;
+  }
+
+  function computeE1RM(exId, ex){
+    if(ex.type !== 'weight') return null;
+    let best = 0;
+    Object.keys(data).forEach(d => {
+      if(d === '_meta') return;
+      const sets = (data[d]||{})[exId];
+      if(!sets) return;
+      sets.forEach(s => {
+        if(!s.done) return;
+        const w = Number(s.weight)||0, r = Number(s.reps)||0;
+        if(w<=0 || r<=0) return;
+        const e1rm = w * (1 + r/30);
+        if(e1rm > best) best = e1rm;
+      });
+    });
+    return best > 0 ? Math.round(best*10)/10 : null;
+  }
+
+  function tallySVG(count){
+    const groups = Math.min(Math.floor(count/5), 6);
+    const remainder = groups===6 ? 0 : count % 5;
+    const groupWidth = 24, h = 22;
+    let x = 3, marks = '';
+    for(let g=0; g<groups; g++){
+      for(let i=0;i<4;i++){
+        const lx = x + i*5;
+        marks += `<line x1="${lx}" y1="3" x2="${lx}" y2="${h-3}" stroke="#ECE8DE" stroke-width="2.5" stroke-linecap="round"/>`;
+      }
+      marks += `<line x1="${x-2}" y1="${h-1}" x2="${x+17}" y2="1" stroke="#D6402A" stroke-width="2.5" stroke-linecap="round"/>`;
+      x += groupWidth;
+    }
+    for(let i=0;i<remainder;i++){
+      const lx = x + i*5;
+      marks += `<line x1="${lx}" y1="3" x2="${lx}" y2="${h-3}" stroke="#ECE8DE" stroke-width="2.5" stroke-linecap="round"/>`;
+    }
+    const width = Math.max(x + remainder*5 + 4, 10);
+    return `<svg viewBox="0 0 ${width} ${h}" width="${width}" height="${h}" aria-hidden="true">${marks}</svg>`;
+  }
+
+  function computeTodayVolume(){
+    let vol = 0;
+    const todayLog = data[todayStr()] || {};
+    Object.entries(todayLog).forEach(([exId, sets]) => {
+      const ex = EXERCISES.find(x => x.id === exId);
+      if(ex && ex.type === 'weight'){
+        sets.forEach(s => { if(s.done) vol += (Number(s.weight)||0) * (Number(s.reps)||0); });
+      }
+    });
+    return Math.round(vol);
+  }
+
+  function computeWeeklyCompletion(){
+    let count = 0;
+    for(let i=0;i<7;i++){
+      const d = new Date();
+      d.setDate(d.getDate()-i);
+      const ds = d.toLocaleDateString('en-CA');
+      const log = data[ds];
+      if(log && Object.values(log).some(sets => sets.some(s => s.done))) count++;
+    }
+    return count;
+  }
+
+  function getScheduleTypeForDate(d){
+    return SCHEDULE[jsToScheduleIndex(d.getDay())].type;
+  }
+
+  function isDayComplete(dateStr, dayType){
+    if(dayType === 'rest') return true;
+    const list = EXERCISES.filter(e => e.day.includes(dayType));
+    const log = data[dateStr];
+    if(!log) return false;
+    return list.every(ex => {
+      const sets = log[ex.id];
+      return sets && sets.length === ex.sets && sets.every(s => s.done);
+    });
+  }
+
+  function computeStreak(){
+    let streak = 0;
+    let cursor = new Date();
+    const todayType = getScheduleTypeForDate(cursor);
+    if(isDayComplete(todayStr(), todayType)) streak++;
+    for(let i=1;i<400;i++){
+      cursor.setDate(cursor.getDate()-1);
+      const ds = cursor.toLocaleDateString('en-CA');
+      const type = getScheduleTypeForDate(cursor);
+      if(isDayComplete(ds, type)) streak++; else break;
+    }
+    return streak;
+  }
+
+  function computeLifetimeStats(){
+    let sets = 0, vol = 0;
+    Object.keys(data).forEach(d => {
+      if(d === '_meta') return;
+      Object.entries(data[d]).forEach(([exId, setsArr]) => {
+        const ex = EXERCISES.find(x => x.id === exId);
+        setsArr.forEach(s => {
+          if(s.done){
+            sets++;
+            if(ex && ex.type==='weight') vol += (Number(s.weight)||0) * (Number(s.reps)||0);
+          }
+        });
+      });
+    });
+    return {sets, vol: Math.round(vol)};
+  }
+
+  function checkBadges(){
+    if(!data._meta) data._meta = {bestStreak:0};
+    const streak = computeStreak();
+    if(streak > data._meta.bestStreak){
+      data._meta.bestStreak = streak;
+      persist();
+    }
+    const lifetime = computeLifetimeStats();
+    return {streak, lifetime};
+  }
+
+  function updateStats(){
+    let count = 0;
+    const todayLog = data[todayStr()] || {};
+    Object.values(todayLog).forEach(sets => sets.forEach(s => { if(s.done) count++; }));
+    tallySvgEl.innerHTML = tallySVG(count);
+    const day = SCHEDULE[todayIndex()];
+    const totalToday = day.type === 'rest' ? 0 : EXERCISES.filter(e => e.day.includes(day.type)).reduce((sum,e) => sum + e.sets, 0);
+    tallyCountEl.textContent = totalToday ? `${count}/${totalToday}` : String(count);
+    volCountEl.textContent = `${computeTodayVolume()} kg`;
+    weekCountEl.textContent = `${computeWeeklyCompletion()}/6 days`;
+    streakChip.textContent = `🔥 ${currentStreak}`;
+  }
+
+  function showDayModal(dateStr){
+    const log = data[dateStr];
+    const dateObj = new Date(dateStr + 'T00:00:00');
+    modalTitleEl.textContent = dateObj.toLocaleDateString(undefined, {weekday:'long', month:'short', day:'numeric'});
+    let rows = '';
+    if(log){
+      rows = Object.entries(log).map(([exId, sets]) => {
+        const ex = EXERCISES.find(x => x.id === exId);
+        if(!ex) return '';
+        const done = sets.filter(s => s.done);
+        if(!done.length) return '';
+        let summary;
+        if(ex.type==='weight') summary = done.map(s => `${s.weight||0}×${s.reps||0}`).join(', ');
+        else if(ex.type==='bodyweight') summary = done.map(s => `${s.reps||0}`).join(', ') + ' reps';
+        else summary = done.map(s => `${s.seconds||0}s`).join(', ');
+        return `<div class="modal-row"><span>${ex.name}</span><span class="modal-vals">${summary}</span></div>`;
+      }).filter(Boolean).join('');
+    }
+    modalBodyEl.innerHTML = rows || `<p class="modal-empty">Nothing logged this day.</p>`;
+    dayModal.classList.remove('hidden');
+  }
+  calGridEl.addEventListener('click', (e) => {
+    const cell = e.target.closest('.cal-cell');
+    if(!cell || !cell.dataset.date) return;
+    showDayModal(cell.dataset.date);
+  });
+  modalCloseEl.addEventListener('click', () => dayModal.classList.add('hidden'));
+  dayModal.addEventListener('click', (e) => { if(e.target === dayModal) dayModal.classList.add('hidden'); });
+
+  function renderStreakPage(){
+    streakBigEl.innerHTML = `${currentStreak}<span>day streak</span>`;
+    streakBestLineEl.textContent = `Best ever: ${data._meta?.bestStreak||0} days`;
+
+    const days = 35;
+    let cells = '';
+    const cursor = new Date();
+    cursor.setDate(cursor.getDate() - (days - 1));
+    for(let i=0; i<days; i++){
+      const ds = cursor.toLocaleDateString('en-CA');
+      const type = getScheduleTypeForDate(cursor);
+      const isToday = ds === todayStr();
+      let cls = 'cal-cell';
+      if(isToday){
+        cls += isDayComplete(ds, type) ? ' done' : ' pending';
+      } else if(type === 'rest'){
+        cls += ' rest';
+      } else if(isDayComplete(ds, type)){
+        cls += ' done';
+      } else {
+        cls += ' missed';
+      }
+      cells += `<div class="${cls}" data-date="${ds}">${cursor.getDate()}</div>`;
+      cursor.setDate(cursor.getDate() + 1);
+    }
+    calGridEl.innerHTML = cells;
+
+    weightBigEl.innerHTML = `${currentLifetime.vol.toLocaleString()}<span>kg lifted, all time</span>`;
+    weightSetsLineEl.textContent = `${currentLifetime.sets.toLocaleString()} sets logged`;
+    document.getElementById('monthCompare').textContent = monthCompareText();
+    renderBodyweight();
+    backupReminderEl.textContent = backupReminderText();
+  }
+
+  function setRowHTML(ex, idx, s, locked){
+    const done = s.done ? 'is-done' : '';
+    const dis = locked ? 'disabled' : '';
+    const target = ex.targets ? ex.targets[idx] : null;
+    const isFailure = target === 'F';
+    const unit = ex.type === 'time' ? 's' : ' reps';
+    const targetTag = target == null ? '' : `<span class="set-target ${isFailure?'is-failure':''}">${isFailure ? 'MAX' : target + unit}</span>`;
+    const labelHtml = `<span class="set-label">S${idx+1}</span>${targetTag}`;
+
+    if(ex.type==='weight'){
+      return `<div class="set-row ${done}" data-ex="${ex.id}" data-idx="${idx}">
+        ${labelHtml}
+        <input class="set-input" type="number" inputmode="decimal" placeholder="wt" aria-label="${ex.name} set ${idx+1} weight" data-field="weight" value="${s.weight ?? ''}" ${dis}>
+        <span class="set-x">×</span>
+        <input class="set-input" type="number" inputmode="numeric" placeholder="reps" aria-label="${ex.name} set ${idx+1} reps" data-field="reps" value="${s.reps ?? ''}" ${dis}>
+        <button class="set-check" type="button" data-action="toggle" aria-label="Mark set ${idx+1} done" ${dis}>${s.done ? '✓' : ''}</button>
+      </div>`;
+    }
+    if(ex.type==='bodyweight'){
+      return `<div class="set-row ${done}" data-ex="${ex.id}" data-idx="${idx}">
+        ${labelHtml}
+        <input class="set-input wide" type="number" inputmode="numeric" placeholder="reps" aria-label="${ex.name} set ${idx+1} reps" data-field="reps" value="${s.reps ?? ''}" ${dis}>
+        <button class="set-check" type="button" data-action="toggle" aria-label="Mark set ${idx+1} done" ${dis}>${s.done ? '✓' : ''}</button>
+      </div>`;
+    }
+    return `<div class="set-row ${done}" data-ex="${ex.id}" data-idx="${idx}">
+      ${labelHtml}
+      <input class="set-input wide" type="number" inputmode="numeric" placeholder="sec" aria-label="${ex.name} set ${idx+1} seconds" data-field="seconds" value="${s.seconds ?? ''}" ${dis}>
+      <button class="set-check" type="button" data-action="toggle" aria-label="Mark set ${idx+1} done" ${dis}>${s.done ? '✓' : ''}</button>
+    </div>`;
+  }
+
+  function detailHTML(ex){
+    const pr = computePR(ex.id, ex);
+    const e1rm = computeE1RM(ex.id, ex);
+    const open = expandedDetails.has(ex.id);
+    const videoUrl = `https://www.youtube.com/results?search_query=${encodeURIComponent(ex.name + ' exercise proper form')}`;
+    const points = getHistoryPoints(ex.id, ex);
+    const trendHtml = points.length >= 2 ? `<h4>Trend (last ${points.length} sessions)</h4><div class="trend-chart">${trendSVG(points)}</div>` : '';
+    return `<div class="details ${open ? '' : 'hidden'}" id="details-${ex.id}">
+      <h4>Target</h4>
+      <p class="target-line">${ex.muscle}</p>
+      ${pr ? `<p class="pr-line">🏆 Personal best: ${pr}</p>` : ''}
+      ${e1rm ? `<p class="pr-line">📈 Est. 1-rep max: ${e1rm}kg</p>` : ''}
+      ${trendHtml}
+      <h4>Form</h4>
+      <ol>${ex.how.map(step => `<li>${step}</li>`).join('')}</ol>
+      <div class="tip-box"><b>Tip:</b> ${ex.tip}</div>
+      <a class="video-link" href="${videoUrl}" target="_blank" rel="noopener">▶ Watch form video</a>
+    </div>`;
+  }
+
+  function cardHTML(ex, locked){
+    const sets = getDisplaySets(ex.id, ex, locked);
+    const last = lastSessionSummary(ex.id, ex);
+    const suggestion = suggestNext(ex);
+    const complete = sets.every(s => s.done);
+    const unit = (ex.type==='weight') ? 'kg' : '';
+    return `<div class="card ${complete ? 'stamped' : ''} ${locked ? 'locked' : ''}" data-card="${ex.id}">
+      <div class="stamp">Done</div>
+      <span class="card-tag">${ex.tag}</span>
+      <div class="card-head">
+        <span class="card-name">${ex.name}</span>
+        <span class="card-badge">${ex.sets} sets<span class="rest-note">Rest ${fmtRest(ex.rest)}</span></span>
+      </div>
+      <p class="card-blurb">${ex.blurb}</p>
+      <p class="card-last">
+        <span>${last ? `Last: <b>${last}</b>` : 'Not logged yet'}${suggestion ? ` <span class="suggest">· Try: ${suggestion}${unit}</span>` : ''}</span>
+        ${last && !locked ? `<button class="copy-btn" type="button" data-action="copylast" data-ex="${ex.id}">↻ Copy last</button>` : ''}
+      </p>
+      <button class="detail-toggle ${expandedDetails.has(ex.id) ? 'open' : ''}" type="button" data-action="detail" data-ex="${ex.id}">
+        Details <svg width="10" height="6" viewBox="0 0 10 6"><path d="M1 1L5 5L9 1" stroke="currentColor" stroke-width="1.6" fill="none" stroke-linecap="round"/></svg>
+      </button>
+      ${detailHTML(ex)}
+      ${(ex.type==='weight' && ex.sets>1 && !locked) ? `<button class="same-weight-btn" type="button" data-action="samewt" data-ex="${ex.id}">= Copy Set 1's weight to all sets</button>` : ''}
+      ${sets.map((s,idx) => setRowHTML(ex, idx, s, locked)).join('')}
+    </div>`;
+  }
+
+  function prepCardHTML(dayType){
+    const w = WARMUPS[dayType];
+    const open = expandedDetails.has('prep');
+    return `<div class="card prep-card" data-prep="1">
+      <span class="card-tag">Prep · Not timed against your hour</span>
+      <div class="card-head">
+        <span class="card-name">Warm-Up &amp; Stretch</span>
+        <span class="card-badge">10 min</span>
+      </div>
+      <p class="card-blurb">Run the warm-up before lifting and the stretch after.</p>
+      <button class="detail-toggle ${open ? 'open' : ''}" type="button" data-action="detail" data-ex="prep">
+        Show routine <svg width="10" height="6" viewBox="0 0 10 6"><path d="M1 1L5 5L9 1" stroke="currentColor" stroke-width="1.6" fill="none" stroke-linecap="round"/></svg>
+      </button>
+      <div class="details ${open ? '' : 'hidden'}" id="details-prep">
+        <h4>Warm-up (5 min)</h4>
+        <ol>${w.warmup.map(i => `<li>${i}</li>`).join('')}</ol>
+        <h4>Cool-down stretch (5 min)</h4>
+        <ol>${w.cooldown.map(i => `<li>${i}</li>`).join('')}</ol>
+      </div>
+    </div>`;
+  }
+
+  function renderWeek(){
+    weekEl.innerHTML = SCHEDULE.map((d,i) => {
+      const cls = ['day-pill'];
+      if(i===todayIndex()) cls.push('is-today');
+      if(i===selectedIndex) cls.push('selected');
+      return `<div class="${cls.join(' ')}" data-idx="${i}">
+        <span class="dname">${d.label}</span>
+        <span class="dtype">${d.type.replace('legs','leg ')}</span>
+      </div>`;
+    }).join('');
+  }
+
+  function renderHero(){
+    const day = SCHEDULE[selectedIndex];
+    const title = DAY_TITLE[day.type];
+    const isToday = selectedIndex === todayIndex();
+    dayTitleEl.innerHTML = `<h2>${title}</h2>${isToday ? '<span class="today-chip">Today</span>' : ''}`;
+    if(day.type === 'rest'){
+      dayMetaEl.textContent = '';
+    } else {
+      const list = EXERCISES.filter(e => e.day.includes(day.type));
+      const totalSets = list.reduce((sum,e) => sum + e.sets, 0);
+      const liftMin = estimateLiftMinutes(list);
+      dayMetaEl.textContent = `${list.length} exercises · ${totalSets} sets · ~${liftMin} min lifting + 10 min warm-up/stretch ≈ ${liftMin+10} min total`;
+    }
+  }
+
+  function renderPreviewBanner(){
+    const isToday = selectedIndex === todayIndex();
+    const day = SCHEDULE[selectedIndex];
+    if(isToday || day.type === 'rest'){ previewBannerEl.innerHTML = ''; return; }
+    previewBannerEl.innerHTML = `<div class="preview-banner">
+      <span>Previewing ${day.label} — logging only works on the actual day.</span>
+      <button type="button" id="jumpToday">Today</button>
+    </div>`;
+    document.getElementById('jumpToday').addEventListener('click', () => {
+      selectedIndex = todayIndex();
+      renderAll();
+    });
+  }
+
+  function renderCards(){
+    const day = SCHEDULE[selectedIndex];
+    let html = '';
+    if(day.type === 'rest'){
+      const msg = REST_MESSAGES[Math.floor(Math.random()*REST_MESSAGES.length)];
+      html += `<div class="rest-card"><h3>Rest up</h3><p>${msg}</p></div>`;
+    } else {
+      const locked = selectedIndex !== todayIndex();
+      const list = EXERCISES.filter(e => e.day.includes(day.type));
+      html += prepCardHTML(day.type) + list.map(ex => cardHTML(ex, locked)).join('');
+    }
+    cardListEl.innerHTML = html;
+  }
+
+  function renderGreeting(){
+    const h = new Date().getHours();
+    let msg;
+    if(h < 5) msg = 'Late-night session? Respect.';
+    else if(h < 12) msg = "Good morning — let's get after it.";
+    else if(h < 17) msg = 'Good afternoon.';
+    else if(h < 22) msg = 'Good evening.';
+    else msg = 'Late-night session? Respect.';
+    greetingEl.textContent = msg;
+  }
+
+  function backupReminderText(){
+    const last = data._meta?.lastBackup;
+    if(!last){
+      const dayCount = Object.keys(data).filter(d => d !== '_meta').length;
+      if(dayCount >= 3) return "You haven't backed up yet — tap below to create your first backup code.";
+      return '';
+    }
+    const daysSince = Math.floor((Date.now() - last) / 86400000);
+    if(daysSince >= 7) return `It's been ${daysSince} days since your last backup — worth doing again.`;
+    return '';
+  }
+
+  backupBtn.addEventListener('click', () => {
+    backupArea.value = JSON.stringify(data);
+    backupArea.classList.remove('hidden');
+    backupArea.focus();
+    backupArea.select();
+    backupNote.textContent = 'Tap inside the box, select all, and copy it somewhere safe (like a Notes app).';
+    if(!data._meta) data._meta = {bestStreak:0};
+    data._meta.lastBackup = Date.now();
+    persist();
+    backupReminderEl.textContent = backupReminderText();
+  });
+  restoreBtn.addEventListener('click', () => {
+    backupArea.value = '';
+    backupArea.placeholder = 'Paste your backup code here';
+    backupArea.classList.remove('hidden');
+    restoreConfirm.classList.remove('hidden');
+    backupNote.textContent = '';
+    backupArea.focus();
+  });
+  restoreConfirm.addEventListener('click', () => {
+    try{
+      const parsed = JSON.parse(backupArea.value);
+      data = parsed;
+      if(!data._meta) data._meta = {bestStreak:0};
+      persist();
+      renderAll();
+      backupNote.textContent = '✅ Restored successfully.';
+      backupArea.classList.add('hidden');
+      restoreConfirm.classList.add('hidden');
+    }catch(e){
+      backupNote.textContent = "⚠️ That code doesn't look valid — check you copied the whole thing.";
+    }
+  });
+
+  function renderAll(){
+    const res = checkBadges();
+    currentStreak = res.streak;
+    currentLifetime = res.lifetime;
+    renderGreeting();
+    renderWeek();
+    renderHero();
+    renderPreviewBanner();
+    renderCards();
+    updateStats();
+    renderStreakPage();
+  }
+
+  function showPage(page){
+    document.getElementById('workoutPage').classList.toggle('hidden', page !== 'workout');
+    document.getElementById('streakPage').classList.toggle('hidden', page !== 'streak');
+    document.querySelectorAll('.page-tab').forEach(btn => {
+      btn.classList.toggle('active', btn.dataset.page === page);
+    });
+  }
+  document.querySelectorAll('.page-tab').forEach(btn => {
+    btn.addEventListener('click', () => showPage(btn.dataset.page));
+  });
+  streakChip.addEventListener('click', () => showPage('streak'));
+  document.getElementById('retrySave').addEventListener('click', () => attemptSave(0));
+
+  weekEl.addEventListener('click', (e) => {
+    const pill = e.target.closest('.day-pill');
+    if(!pill) return;
+    selectedIndex = Number(pill.dataset.idx);
+    renderAll();
+  });
+
+  cardListEl.addEventListener('click', (e) => {
+    const detailBtn = e.target.closest('.detail-toggle');
+    if(detailBtn){
+      const id = detailBtn.dataset.ex;
+      if(expandedDetails.has(id)) expandedDetails.delete(id); else expandedDetails.add(id);
+      const panel = document.getElementById(`details-${id}`);
+      panel.classList.toggle('hidden', !expandedDetails.has(id));
+      detailBtn.classList.toggle('open', expandedDetails.has(id));
+      return;
+    }
+    const copyBtn = e.target.closest('.copy-btn');
+    if(copyBtn){
+      const exId = copyBtn.dataset.ex;
+      const day = SCHEDULE[selectedIndex];
+      const ex = EXERCISES.find(x => x.id === exId && x.day.includes(day.type));
+      const last = lastSessionSets(exId);
+      if(last && ex){
+        const sets = ensureToday(exId, ex);
+        sets.forEach((s, i) => {
+          const src = last[i] || last[last.length-1];
+          if(ex.type==='weight'){ s.weight = src.weight; s.reps = src.reps; }
+          else if(ex.type==='bodyweight'){ s.reps = src.reps; }
+          else { s.seconds = src.seconds; }
+        });
+        persist();
+        renderCards();
+        updateStats();
+      }
+      return;
+    }
+    const sameWtBtn = e.target.closest('.same-weight-btn');
+    if(sameWtBtn){
+      const exId = sameWtBtn.dataset.ex;
+      const day = SCHEDULE[selectedIndex];
+      const ex = EXERCISES.find(x => x.id === exId && x.day.includes(day.type));
+      const sets = ensureToday(exId, ex);
+      const w = sets[0].weight;
+      if(w){
+        sets.forEach(s => { s.weight = w; });
+        persist();
+        renderCards();
+      }
+      return;
+    }
+    const checkBtn = e.target.closest('.set-check');
+    if(checkBtn && !checkBtn.disabled){
+      const row = checkBtn.closest('.set-row');
+      const exId = row.dataset.ex;
+      const idx = Number(row.dataset.idx);
+      const day = SCHEDULE[selectedIndex];
+      const ex = EXERCISES.find(x => x.id === exId && x.day.includes(day.type));
+      const sets = ensureToday(exId, ex);
+      const wasComplete = isDayComplete(todayStr(), day.type);
+      const oldPR = computePR(exId, ex);
+      sets[idx].done = !sets[idx].done;
+      row.classList.toggle('is-done', sets[idx].done);
+      checkBtn.textContent = sets[idx].done ? '✓' : '';
+      const card = document.querySelector(`.card[data-card="${exId}"]`);
+      card.classList.toggle('stamped', sets.every(s => s.done));
+      persist();
+      if(sets[idx].done){ primeAudio(); startRest(ex.rest); }
+      renderAll();
+      const newPR = computePR(exId, ex);
+      const gotPR = sets[idx].done && newPR && newPR !== oldPR;
+      const dayJustCompleted = !wasComplete && isDayComplete(todayStr(), day.type);
+      if(gotPR){
+        showToast(`🏆 New PR — ${ex.name}: ${newPR}`);
+      }else if(dayJustCompleted){
+        showToast(`🔥 Day complete! Streak: ${currentStreak} · Next: ${getTomorrowLabel()}`);
+      }
+    }
+  });
+
+  cardListEl.addEventListener('keydown', (e) => {
+    if(e.key !== 'Enter') return;
+    const input = e.target;
+    if(!input.classList || !input.classList.contains('set-input')) return;
+    e.preventDefault();
+    const row = input.closest('.set-row');
+    if(input.dataset.field === 'weight'){
+      const repsInput = row.querySelector('input[data-field="reps"]');
+      if(repsInput){ repsInput.focus(); return; }
+    }
+    const allRows = Array.from(row.parentElement.querySelectorAll('.set-row'));
+    const idx = allRows.indexOf(row);
+    const nextRow = allRows[idx+1];
+    if(nextRow){
+      const nextInput = nextRow.querySelector('.set-input');
+      if(nextInput) nextInput.focus();
+    }else{
+      input.blur();
+    }
+  });
+
+  cardListEl.addEventListener('input', (e) => {
+    const input = e.target.closest('.set-input');
+    if(!input || input.disabled) return;
+    const row = input.closest('.set-row');
+    const exId = row.dataset.ex;
+    const idx = Number(row.dataset.idx);
+    const day = SCHEDULE[selectedIndex];
+    const ex = EXERCISES.find(x => x.id === exId && x.day.includes(day.type));
+    const sets = ensureToday(exId, ex);
+    sets[idx][input.dataset.field] = input.value;
+    persist();
+  });
+
+  async function init(){
+    try{
+      const res = await storageGet(STORAGE_KEY);
+      if(res && res.value) data = JSON.parse(res.value);
+    }catch(e){ data = {}; }
+    if(!data._meta) data._meta = {bestStreak:0};
+    renderAll();
+
+    let lastKnownDate = todayStr();
+    setInterval(() => {
+      const nowStr = todayStr();
+      if(nowStr !== lastKnownDate){
+        lastKnownDate = nowStr;
+        selectedIndex = todayIndex();
+        renderAll();
+      }
+    }, 60000);
+  }
+  init();
+})();
+</script>
+</body>
+</html>
