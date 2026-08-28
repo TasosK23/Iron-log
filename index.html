@@ -315,7 +315,7 @@
 
 <script>
 (function(){
-  const APP_VERSION = '2026.08.27.11';
+  const APP_VERSION = '2026.08.27.12';
   const SCHEDULE = [
     {label:'Mon', type:'push'}, {label:'Tue', type:'pull'}, {label:'Wed', type:'legsA'},
     {label:'Thu', type:'push'}, {label:'Fri', type:'pull'}, {label:'Sat', type:'legsB'}, {label:'Sun', type:'rest'},
@@ -459,11 +459,11 @@
       muscle:'Quads, glutes, hamstrings (unilateral)',
       how:['Rest the top of one foot behind you on a sturdy chair, low step, or stack of books.','Lower straight down until your front thigh is roughly parallel to the floor.','Drive through your front heel to stand, keeping most of your weight on the front leg.'],
       tip:'Keep the rear foot lower rather than higher — an overly high surface hurts your balance more than it helps.'},
-    {id:'bird_dog', day:['legsB'], tag:'Lower Back', name:'Bird Dog', sets:3, rest:45, badge:'3×10–12/side', type:'bodyweight', targets:[10,10,'F'],
+    {id:'bird_dog', day:['legsB'], tag:'Lower Back', name:'Bird Dog', sets:3, rest:45, badge:'3×10–12/side', type:'bodyweight', targets:[10,10,10],
       blurb:'Swapped in for the Superman hold after rechecking the research — it trains the same lower-back stabilizers with far less spinal compression.',
       muscle:'Erector spinae, deep core (transverse abdominis), glutes, shoulder stabilizers',
       how:['Start on hands and knees, hands under shoulders, knees under hips.','Extend one arm forward and the opposite leg back at the same time, keeping your hips and shoulders level.','Hold briefly at full extension, then return under control and switch sides.'],
-      tip:'Keep your lower back flat, not arched — the goal is a dead-still spine while your limbs move, not a backbend.'},
+      tip:"Unlike everything else in this app, don't push this one to failure — it's a control exercise, not a fatigue exercise. A slow, perfectly balanced rep beats a rushed one every time. Keep your lower back flat, not arched."},
   ];
 
   const STORAGE_KEY = 'workout-log';
