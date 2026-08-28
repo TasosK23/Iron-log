@@ -310,7 +310,7 @@
 
 <script>
 (function(){
-  const APP_VERSION = '2026.08.27.2';
+  const APP_VERSION = '2026.08.27.3';
   const SCHEDULE = [
     {label:'Mon', type:'push'}, {label:'Tue', type:'pull'}, {label:'Wed', type:'legsA'},
     {label:'Thu', type:'push'}, {label:'Fri', type:'pull'}, {label:'Sat', type:'legsB'}, {label:'Sun', type:'rest'},
@@ -765,7 +765,7 @@
   function lastSessionSummary(exId, ex){
     const done = lastSessionSets(exId);
     if(!done) return null;
-    if(ex.type==='weight') return done.map(s => `${s.weight||0}×${s.reps||0}`).join(', ');
+    if(ex.type==='weight') return done.map(s => `${s.weight||0}kg×${s.reps||0}`).join(', ');
     if(ex.type==='bodyweight') return done.map(s => `${s.reps||0}`).join(', ') + ' reps';
     return done.map(s => `${s.seconds||0}s`).join(', ');
   }
@@ -814,7 +814,7 @@
       });
     });
     if(best==null) return null;
-    if(ex.type==='weight') return `${best.weight}×${best.reps}`;
+    if(ex.type==='weight') return `${best.weight}kg×${best.reps}`;
     if(ex.type==='bodyweight') return `${best} reps`;
     return `${best}s`;
   }
@@ -991,7 +991,7 @@
         const done = sets.filter(s => s.done);
         if(!done.length) return '';
         let summary;
-        if(ex.type==='weight') summary = done.map(s => `${s.weight||0}×${s.reps||0}`).join(', ');
+        if(ex.type==='weight') summary = done.map(s => `${s.weight||0}kg×${s.reps||0}`).join(', ');
         else if(ex.type==='bodyweight') summary = done.map(s => `${s.reps||0}`).join(', ') + ' reps';
         else summary = done.map(s => `${s.seconds||0}s`).join(', ');
         return `<div class="modal-row"><span>${ex.name}</span><span class="modal-vals">${summary}</span></div>`;
@@ -1054,7 +1054,7 @@
     if(ex.type==='weight'){
       return `<div class="set-row ${done}" data-ex="${ex.id}" data-idx="${idx}">
         ${labelHtml}
-        <input class="set-input" type="number" inputmode="decimal" placeholder="wt" aria-label="${ex.name} set ${idx+1} weight" data-field="weight" value="${s.weight ?? ''}" ${dis}>
+        <input class="set-input" type="number" inputmode="decimal" placeholder="kg" aria-label="${ex.name} set ${idx+1} weight in kg" data-field="weight" value="${s.weight ?? ''}" ${dis}>
         <span class="set-x">×</span>
         <input class="set-input" type="number" inputmode="numeric" placeholder="reps" aria-label="${ex.name} set ${idx+1} reps" data-field="reps" value="${s.reps ?? ''}" ${dis}>
         <button class="set-check" type="button" data-action="toggle" aria-label="Mark set ${idx+1} done" ${dis}>${s.done ? '✓' : ''}</button>
