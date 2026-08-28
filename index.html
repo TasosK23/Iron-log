@@ -315,7 +315,7 @@
 
 <script>
 (function(){
-  const APP_VERSION = '2026.08.27.15';
+  const APP_VERSION = '2026.08.27.16';
   const SCHEDULE = [
     {label:'Mon', type:'push'}, {label:'Tue', type:'pull'}, {label:'Wed', type:'legsA'},
     {label:'Thu', type:'push'}, {label:'Fri', type:'pull'}, {label:'Sat', type:'legsB'}, {label:'Sun', type:'rest'},
@@ -446,8 +446,8 @@
     {id:'lateral_lunge', day:['legsA','legsB'], tag:'Hips', name:'Lateral Lunge', sets:3, rest:60, badge:'3×10–12/side', type:'weight', targets:[10,10,'F'],
       blurb:"The one plane of motion nothing else here trains — side-to-side movement works your hip abductors and adductors, which every squat and forward lunge otherwise skips entirely.",
       muscle:'Glute medius, adductors, quads (working leg)',
-      how:['Stand tall, holding a dumbbell at your chest if using one.','Step one leg out wide to the side, bending that knee and sitting your hips back while keeping the other leg straight.','Push through the bent leg\'s heel to return to standing, then repeat on the other side.'],
-      tip:'Keep your toes pointed forward on both feet throughout — letting the stepping foot turn out lets your hips off the hook.'},
+      how:['Stand tall, holding a dumbbell at your chest if using one.','Step one leg out wide to the side, bending that knee and sitting your hips back while keeping the other leg straight.','Push through the bent leg\'s heel to return to standing — pause and squeeze your outer hip for a full second at the top before the next rep.'],
+      tip:'That pause at the top is what actually finishes off the glute medius — skipping it turns this into a quad-dominant movement instead.'},
     {id:'calf_raise', day:['legsA','legsB'], tag:'Calves', name:'Single-Leg Calf Raise', sets:3, rest:45, badge:'3×15/leg', type:'weight', targets:[15,15,'F'],
       blurb:'Calves respond well to frequent training, so this appears on both leg days.',
       muscle:'Calves (gastrocnemius/soleus)',
@@ -464,6 +464,11 @@
       muscle:'Hamstrings, glutes, lower back',
       how:['Dumbbells in front of your thighs, a slight knee bend held constant.','Hinge at the hips, pushing them back as the weights slide down your legs.','Stop at a deep hamstring stretch, then drive your hips forward to stand.'],
       tip:"This is a hip hinge, not a squat — your knees barely bend throughout."},
+    {id:'db_leg_curl', day:['legsA','legsB'], tag:'Legs', name:'Prone DB Leg Curl', sets:3, rest:60, badge:'3×10–12', type:'weight', targets:[10,10,'F'],
+      blurb:"The RDL trains hamstrings through hip extension — this trains the other half of what hamstrings actually do, knee flexion. Research confirms one movement genuinely doesn't replace the other.",
+      muscle:'Hamstrings (knee flexion emphasis)',
+      how:['Lie face down, gripping a dumbbell firmly between your feet or ankles.','Keeping your hips pressed into the floor, curl your heels up toward your glutes by bending your knees.','Lower back down slowly under control — this is the whole set, so don\'t let the dumbbell slip.'],
+      tip:'Move slowly. This setup is precarious at first — a lighter weight with strict control beats a heavier one that drops halfway through the set.'},
     {id:'bulgarian_split_squat', day:['legsB'], tag:'Legs', name:'Bulgarian Split Squat', sets:3, rest:90, badge:'3×8–12/leg', type:'weight', targets:[10,10,'F'],
       blurb:'The single-leg complement to your goblet squat — adds variety and corrects side-to-side imbalances.',
       muscle:'Quads, glutes, hamstrings (unilateral)',
