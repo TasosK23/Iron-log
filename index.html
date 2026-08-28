@@ -311,7 +311,7 @@
 
 <script>
 (function(){
-  const APP_VERSION = '2026.08.27.6';
+  const APP_VERSION = '2026.08.27.7';
   const SCHEDULE = [
     {label:'Mon', type:'push'}, {label:'Tue', type:'pull'}, {label:'Wed', type:'legsA'},
     {label:'Thu', type:'push'}, {label:'Fri', type:'pull'}, {label:'Sat', type:'legsB'}, {label:'Sun', type:'rest'},
@@ -1229,23 +1229,37 @@
     return '';
   }
 
+  let backupPanelOpen = false;
+  function closeBackupPanel(){
+    backupArea.classList.add('hidden');
+    restoreConfirm.classList.add('hidden');
+    backupNote.textContent = '';
+    backupPanelOpen = false;
+  }
   backupBtn.addEventListener('click', () => {
+    if(backupPanelOpen && backupBtn.dataset.mode === 'show'){ closeBackupPanel(); return; }
     backupArea.value = JSON.stringify(data);
     backupArea.classList.remove('hidden');
+    restoreConfirm.classList.add('hidden');
     backupArea.focus();
     backupArea.select();
-    backupNote.textContent = 'Tap inside the box, select all, and copy it somewhere safe (like a Notes app).';
+    backupNote.textContent = 'Tap inside the box, select all, and copy it somewhere safe (like a Notes app). Tap "Show backup code" again to close this.';
+    backupBtn.dataset.mode = 'show';
+    backupPanelOpen = true;
     if(!data._meta) data._meta = {bestStreak:0};
     data._meta.lastBackup = Date.now();
     persist();
     backupReminderEl.textContent = backupReminderText();
   });
   restoreBtn.addEventListener('click', () => {
+    if(backupPanelOpen && backupBtn.dataset.mode === 'restore'){ closeBackupPanel(); return; }
     backupArea.value = '';
     backupArea.placeholder = 'Paste your backup code here';
     backupArea.classList.remove('hidden');
     restoreConfirm.classList.remove('hidden');
-    backupNote.textContent = '';
+    backupNote.textContent = 'Tap "Restore from code" again to cancel.';
+    backupBtn.dataset.mode = 'restore';
+    backupPanelOpen = true;
     backupArea.focus();
   });
   restoreConfirm.addEventListener('click', () => {
@@ -1256,8 +1270,7 @@
       persist();
       renderAll();
       backupNote.textContent = '✅ Restored successfully.';
-      backupArea.classList.add('hidden');
-      restoreConfirm.classList.add('hidden');
+      closeBackupPanel();
     }catch(e){
       backupNote.textContent = "⚠️ That code doesn't look valid — check you copied the whole thing.";
     }
