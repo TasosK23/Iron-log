@@ -272,6 +272,8 @@
           <button class="backup-btn" type="button" id="restoreBtn">Restore from code</button>
         </div>
         <textarea id="backupArea" class="backup-area hidden" placeholder="Paste a backup code here to restore it" rows="4"></textarea>
+        <button class="backup-btn confirm hidden" type="button" id="copyBackupBtn" style="border-color:var(--gold); color:var(--gold);">📋 Copy code</button>
+        <button class="backup-btn hidden" type="button" id="copyBackupBtn" style="width:100%; margin-top:8px;">📋 Copy to clipboard</button>
         <button class="backup-btn confirm hidden" type="button" id="restoreConfirm">Confirm restore (overwrites current log)</button>
         <p class="backup-note" id="backupNote"></p>
       </div>
@@ -311,7 +313,7 @@
 
 <script>
 (function(){
-  const APP_VERSION = '2026.08.27.7';
+  const APP_VERSION = '2026.08.27.8';
   const SCHEDULE = [
     {label:'Mon', type:'push'}, {label:'Tue', type:'pull'}, {label:'Wed', type:'legsA'},
     {label:'Thu', type:'push'}, {label:'Fri', type:'pull'}, {label:'Sat', type:'legsB'}, {label:'Sun', type:'rest'},
@@ -506,6 +508,7 @@
   const backupBtn = document.getElementById('backupBtn');
   const restoreBtn = document.getElementById('restoreBtn');
   const backupArea = document.getElementById('backupArea');
+  const copyBackupBtn = document.getElementById('copyBackupBtn');
   const restoreConfirm = document.getElementById('restoreConfirm');
   const backupNote = document.getElementById('backupNote');
   const backupReminderEl = document.getElementById('backupReminder');
@@ -1233,6 +1236,7 @@
   function closeBackupPanel(){
     backupArea.classList.add('hidden');
     restoreConfirm.classList.add('hidden');
+    copyBackupBtn.classList.add('hidden');
     backupNote.textContent = '';
     backupPanelOpen = false;
   }
@@ -1241,9 +1245,8 @@
     backupArea.value = JSON.stringify(data);
     backupArea.classList.remove('hidden');
     restoreConfirm.classList.add('hidden');
-    backupArea.focus();
-    backupArea.select();
-    backupNote.textContent = 'Tap inside the box, select all, and copy it somewhere safe (like a Notes app). Tap "Show backup code" again to close this.';
+    copyBackupBtn.classList.remove('hidden');
+    backupNote.textContent = 'Tap "Copy code" to grab it, or tap the box yourself to select it manually.';
     backupBtn.dataset.mode = 'show';
     backupPanelOpen = true;
     if(!data._meta) data._meta = {bestStreak:0};
@@ -1251,16 +1254,26 @@
     persist();
     backupReminderEl.textContent = backupReminderText();
   });
+  copyBackupBtn.addEventListener('click', async () => {
+    try{
+      await navigator.clipboard.writeText(backupArea.value);
+      backupNote.textContent = '✅ Copied! Paste it somewhere safe, like a Notes app.';
+    }catch(e){
+      backupArea.focus();
+      backupArea.select();
+      backupNote.textContent = "Couldn't auto-copy — the text is selected, use your keyboard's copy option.";
+    }
+  });
   restoreBtn.addEventListener('click', () => {
     if(backupPanelOpen && backupBtn.dataset.mode === 'restore'){ closeBackupPanel(); return; }
     backupArea.value = '';
-    backupArea.placeholder = 'Paste your backup code here';
+    backupArea.placeholder = 'Tap the box, then paste your backup code here';
     backupArea.classList.remove('hidden');
     restoreConfirm.classList.remove('hidden');
+    copyBackupBtn.classList.add('hidden');
     backupNote.textContent = 'Tap "Restore from code" again to cancel.';
     backupBtn.dataset.mode = 'restore';
     backupPanelOpen = true;
-    backupArea.focus();
   });
   restoreConfirm.addEventListener('click', () => {
     try{
