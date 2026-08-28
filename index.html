@@ -315,7 +315,7 @@
 
 <script>
 (function(){
-  const APP_VERSION = '2026.08.27.14';
+  const APP_VERSION = '2026.08.27.15';
   const SCHEDULE = [
     {label:'Mon', type:'push'}, {label:'Tue', type:'pull'}, {label:'Wed', type:'legsA'},
     {label:'Thu', type:'push'}, {label:'Fri', type:'pull'}, {label:'Sat', type:'legsB'}, {label:'Sun', type:'rest'},
@@ -366,6 +366,11 @@
       muscle:'Side deltoid',
       how:['Hold onto a doorframe, wall edge, or the pull-up bar post with your inside hand, and lean your torso away from the working arm.','Raise the outside arm out to shoulder height, leading with your elbow.','Lower slowly under control, then finish all reps before switching sides.'],
       tip:'Leaning away is what creates real tension even at the bottom of the stretch — a normal standing raise misses that part of the range entirely.'},
+    {id:'external_rotation', day:['push'], tag:'Rotator Cuff', name:'Dumbbell External Rotation', sets:2, rest:30, badge:'2×12–15/side', type:'weight', targets:[12,12],
+      blurb:'Most training programs load internal rotation heavily (every press you do) and almost never train external rotation — leaving the rotator cuff weak and the shoulder more prone to impingement over time.',
+      muscle:'Infraspinatus, teres minor (rotator cuff external rotators)',
+      how:['Stand tall holding a light dumbbell, elbow bent 90° and pinned to your side, forearm pointing forward.','Keeping your elbow locked against your ribs, rotate your forearm outward and away from your body.','Pause briefly, then return under control to the start.'],
+      tip:'Use a genuinely light weight — 1–3kg is plenty. This is a small muscle group heavy pressing never touches, not a strength test.'},
     {id:'oh_ext', day:['push'], tag:'Triceps', name:'Overhead DB Triceps Ext.', sets:3, rest:60, badge:'3×10–12', type:'weight', targets:[10,10,'F'],
       blurb:'Stretch-position loading for the long head — the triceps head with the most growth potential.',
       muscle:'Triceps, long head emphasis',
@@ -448,6 +453,11 @@
       muscle:'Calves (gastrocnemius/soleus)',
       how:['Stand on one foot on a step or thick book, holding a dumbbell for load.','Lower your heel below the step for a deep stretch.','Rise onto your toes as high as possible, pause, then lower.'],
       tip:'Slow the lowering phase down — calves respond exceptionally well to time under stretch.'},
+    {id:'tib_raise', day:['legsA','legsB'], tag:'Shins', name:'Tibialis Raise', sets:2, rest:30, badge:'2×15–20', type:'bodyweight', targets:[15,'F'],
+      blurb:"Training calves without training the muscle on the front of your shin is the same mistake as training triceps without biceps — a genuinely common, well-documented gap in home programs.",
+      muscle:'Tibialis anterior (shin)',
+      how:['Stand with your back against a wall, heels a few inches out from the wall, feet flat on the floor.','Keeping your heels planted, lift your toes and the front of your foot as high as you can.','Lower back down under control and repeat.'],
+      tip:"Lean against the wall for balance if needed — it's a small muscle, so don't be surprised if it fatigues fast even with just bodyweight."},
 
     {id:'rdl', day:['legsA','legsB'], tag:'Legs', name:'DB Romanian Deadlift', sets:3, rest:105, badge:'3×8–12', type:'weight', targets:[10,10,'F'],
       blurb:'Best hamstring/glute stretch-position move you can load with dumbbells alone — the main lift of this day.',
