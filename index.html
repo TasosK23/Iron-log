@@ -43,11 +43,15 @@
 
   .streak-chip{ background:linear-gradient(135deg, rgba(255,90,69,.18), rgba(255,193,69,.12)); border:1px solid rgba(255,90,69,.4); color:var(--accent); font-family:'JetBrains Mono',monospace; font-weight:600; font-size:12px; padding:6px 10px; border-radius:14px; cursor:pointer; white-space:nowrap; }
   .streak-chip:active{ transform:scale(.95); }
+  .reset-open-btn{ background:var(--surface-2); border:1px solid var(--border); color:var(--text-muted); width:34px; height:34px; border-radius:50%; font-size:16px; cursor:pointer; }
+  .reset-open-btn:active{ transform:scale(.92) rotate(-30deg); }
 
   .streak-hero{ padding:26px 20px 10px; text-align:center; }
   .streak-big{ font-family:'Oswald',sans-serif; font-weight:700; font-size:56px; color:var(--accent); line-height:1; margin:6px 0 2px; text-shadow:0 0 34px rgba(255,90,69,.4); }
   .streak-big span{ font-size:18px; color:var(--text-muted); font-family:'Inter'; font-weight:500; display:block; margin-top:6px; }
   .streak-best{ color:var(--text-muted); font-family:'JetBrains Mono',monospace; font-size:12px; margin:6px 0 0; }
+  .streak-formatted{ color:var(--gold); font-family:'Inter',sans-serif; font-size:13px; font-weight:600; margin:4px 0 0; }
+  .streak-start{ color:var(--text-muted); font-family:'JetBrains Mono',monospace; font-size:11px; margin:4px 0 0; }
 
   .cal-section{ padding:6px 20px 4px; }
   .cal-title{ font-family:'JetBrains Mono',monospace; font-size:10px; letter-spacing:1px; text-transform:uppercase; color:var(--text-muted); margin:0 0 8px; }
@@ -74,6 +78,8 @@
   .stat-row{ display:flex; align-items:center; gap:10px; padding:3px 0; }
   .stat-label{ font-family:'JetBrains Mono',monospace; font-size:11px; letter-spacing:1px; color:var(--text-muted); text-transform:uppercase; white-space:nowrap; }
   .stat-value{ font-family:'JetBrains Mono',monospace; font-size:13px; color:var(--gold); margin-left:auto; }
+  .pill-track{ height:8px; background:var(--surface-2); border-radius:999px; overflow:hidden; margin:2px 0 3px; }
+  .pill-fill{ height:100%; width:0%; background:linear-gradient(90deg, var(--gold), var(--accent)); border-radius:999px; transition:width .3s ease; }
 
   .week{ display:flex; gap:6px; overflow-x:auto; padding:14px 20px; border-bottom:1px solid var(--border); scrollbar-width:none; }
   .week::-webkit-scrollbar{ display:none; }
@@ -158,6 +164,10 @@
 
   .set-row{ display:flex; align-items:center; gap:8px; padding:7px 0; border-top:1px solid var(--border); }
   .set-row:first-of-type{ border-top:none; }
+  @media (prefers-reduced-motion: no-preference){
+    .set-row.shake{ animation: shakeRow .35s ease; }
+  }
+  @keyframes shakeRow{ 0%,100%{transform:translateX(0);} 25%{transform:translateX(-5px);} 75%{transform:translateX(5px);} }
   .set-label{ font-family:'JetBrains Mono',monospace; font-size:11px; color:var(--text-muted); width:22px; flex:none; }
   .set-target{ font-family:'JetBrains Mono',monospace; font-size:10.5px; color:var(--gold); width:48px; flex:none; text-align:left; white-space:nowrap; }
   .set-target.is-failure{ color:var(--accent); font-weight:700; letter-spacing:.3px; text-shadow:0 0 12px rgba(255,90,69,.45); }
@@ -214,12 +224,14 @@
         <h1>IRON <span>LOG</span></h1>
         <div style="display:flex; gap:8px; align-items:center;">
           <button class="streak-chip" id="streakChip" type="button">🔥 0</button>
+          <button class="reset-open-btn" id="resetOpenBtn" type="button" aria-label="Reset log">⟲</button>
         </div>
       </div>
       <p class="greeting" id="greeting"></p>
       <div class="day-title" id="dayTitle"></div>
       <p class="day-meta" id="dayMeta"></p>
-      <div class="stat-row" id="setsTodayRow" style="position:relative; overflow:hidden;"><span class="stat-label" style="position:relative; z-index:1;">Sets today</span><div id="tallySvg" style="position:relative; z-index:1;"></div><span class="stat-value" id="tallyCount" style="position:relative; z-index:1;">0</span></div>
+      <div class="stat-row"><span class="stat-label">Sets today</span><span class="stat-value" id="tallyCount">0</span></div>
+      <div class="pill-track"><div class="pill-fill" id="pillFill"></div></div>
       <div class="stat-row"><span class="stat-label">Volume today</span><span class="stat-value" id="volCount">0 kg</span></div>
       <div class="stat-row"><span class="stat-label">This week</span><span class="stat-value" id="weekCount">0/6 days</span></div>
     </div>
@@ -232,7 +244,9 @@
     <div class="streak-hero">
       <div class="day-meta" style="margin-bottom:0;">Every day counts, one at a time.</div>
       <div class="streak-big" id="streakBig">0<span>day streak</span></div>
+      <p class="streak-formatted" id="streakFormatted"></p>
       <p class="streak-best" id="streakBestLine">Best ever: 0 days</p>
+      <p class="streak-start" id="streakStartLine"></p>
     </div>
     <div class="cal-section">
       <p class="cal-title">Last 35 Days</p>
@@ -313,9 +327,21 @@
   </div>
 </div>
 
+<div class="modal-overlay hidden" id="resetModal">
+  <div class="modal-card">
+    <div class="modal-head">
+      <h3>Reset Log</h3>
+      <button class="modal-close" id="resetModalClose" type="button">✕</button>
+    </div>
+    <p style="color:var(--text-muted); font-size:12.5px; margin:0 0 14px;">This clears logged sets — your streak, PRs, and volume totals are calculated from this data, so resetting will affect them too. Can't be undone.</p>
+    <button class="backup-btn confirm" id="resetDayBtn" type="button" style="width:100%; margin-bottom:10px;">Reset Today</button>
+    <button class="backup-btn confirm" id="resetWeekBtn" type="button" style="width:100%;">Reset This Week</button>
+  </div>
+</div>
+
 <script>
 (function(){
-  const APP_VERSION = '2026.08.27.16';
+  const APP_VERSION = '2026.08.28.1';
   const SCHEDULE = [
     {label:'Mon', type:'push'}, {label:'Tue', type:'pull'}, {label:'Wed', type:'legsA'},
     {label:'Thu', type:'push'}, {label:'Fri', type:'pull'}, {label:'Sat', type:'legsB'}, {label:'Sun', type:'rest'},
@@ -417,11 +443,11 @@
       muscle:'Forearm flexors and extensors',
       how:['Rest your forearm on your thigh, palm up, wrist hanging off the edge. Curl the dumbbell up using just your wrist, then lower.','After that set, flip your palm face-down and repeat to hit the top of the forearm.','Keep your forearm completely still throughout — only your hand moves.'],
       tip:'Train both directions. Most people only do the palm-up version and end up with an imbalanced forearm.'},
-    {id:'hanging_raise', day:['pull'], tag:'Core', name:'Hanging Leg Raise', sets:3, rest:45, badge:'3×10–15', type:'bodyweight', targets:[10,10,'F'],
-      blurb:'The best ab move your pull-up bar gives you — hits the lower abs hard.',
-      muscle:'Lower abs, hip flexors, grip',
-      how:['Hang from the bar with a full grip, legs straight or knees bent.','Raise your legs or knees toward your chest without swinging.','Lower slowly under control.'],
-      tip:'Control the descent — swinging turns this into momentum, not ab work.'},
+    {id:'floor_leg_raise', day:['pull'], tag:'Core', name:'Floor Leg Raise', sets:3, rest:45, badge:'3×10–15', type:'bodyweight', targets:[10,10,'F'],
+      blurb:"Swapped in for the hanging version since a full hang isn't practical on a low bar — same lower-ab, hip-flexion pattern, done lying down instead.",
+      muscle:'Lower abs, hip flexors',
+      how:['Lie on your back, legs straight (or knees bent for an easier version), hands at your sides or tucked under your lower back.','Keeping your lower back pressed into the floor, raise your legs up toward the ceiling.','Lower them back down slowly, stopping the moment your lower back starts to arch off the floor.'],
+      tip:"That last point matters most — the second your back arches, you've gone past today's range. Bend your knees to shorten the lever if straight legs make that happen too early."},
     {id:'prone_y_raise', day:['pull'], tag:'Lower Traps', name:'Prone Y-Raise', sets:3, rest:45, badge:'3×15–20', type:'bodyweight', targets:[15,15,'F'],
       blurb:'Your lower traps were only getting indirect work from everything else this session — EMG research shows this move activates them better than almost anything else you can do.',
       muscle:'Lower trapezius, rear delts, rhomboids',
@@ -438,11 +464,11 @@
       muscle:'Quads, glutes, hamstrings, balance',
       how:['Step forward into a lunge, back knee dropping toward the floor.','Push through your front heel to step into the next lunge.','Keep your torso upright throughout.'],
       tip:'A longer step targets the glutes more; a shorter step shifts emphasis to the quads.'},
-    {id:'hanging_oblique', day:['legsA','legsB'], tag:'Obliques', name:'Hanging Oblique Raise', sets:3, rest:45, badge:'3×10–12/side', type:'bodyweight', targets:[10,10,'F'],
-      blurb:'Uses the equipment you already have for real oblique training — a better pick than a standing side bend for this muscle.',
-      muscle:'Obliques, hip flexors, grip',
-      how:['Hang from the bar with a full grip.','Raise your knees up and toward one shoulder, keeping the motion controlled.','Lower and repeat on the other side, alternating.'],
-      tip:'This isolates rotation and lateral flexion, instead of just loading your spine the way a side bend does.'},
+    {id:'side_leg_raise', day:['legsA','legsB'], tag:'Obliques', name:'Side-to-Side Leg Raise', sets:3, rest:45, badge:'3×10–12/side', type:'bodyweight', targets:[10,10,'F'],
+      blurb:'Also swapped from the hanging version for the same bar-height reason — lowering both legs to alternating sides is what actually shifts the load onto your obliques instead of your hip flexors.',
+      muscle:'Obliques, hip flexors',
+      how:['Lie on your back, legs straight up toward the ceiling, arms out to your sides for stability.','Keeping your shoulders flat on the floor, lower both legs together slowly toward one side, only as far as you can control.','Raise back to center and repeat toward the other side — that\'s one rep each way.'],
+      tip:"Move slowly and stop well before your legs touch the floor. The control on the way down is what's training the obliques, not how far you lower."},
     {id:'lateral_lunge', day:['legsA','legsB'], tag:'Hips', name:'Lateral Lunge', sets:3, rest:60, badge:'3×10–12/side', type:'weight', targets:[10,10,'F'],
       blurb:"The one plane of motion nothing else here trains — side-to-side movement works your hip abductors and adductors, which every squat and forward lunge otherwise skips entirely.",
       muscle:'Glute medius, adductors, quads (working leg)',
@@ -511,13 +537,14 @@
   const weekEl = document.getElementById('week');
   const previewBannerEl = document.getElementById('previewBanner');
   const cardListEl = document.getElementById('cardList');
-  const tallySvgEl = document.getElementById('tallySvg');
   const tallyCountEl = document.getElementById('tallyCount');
   const volCountEl = document.getElementById('volCount');
   const weekCountEl = document.getElementById('weekCount');
   const streakChip = document.getElementById('streakChip');
   const streakBigEl = document.getElementById('streakBig');
   const streakBestLineEl = document.getElementById('streakBestLine');
+  const streakFormattedEl = document.getElementById('streakFormatted');
+  const streakStartLineEl = document.getElementById('streakStartLine');
   const calGridEl = document.getElementById('calGrid');
   const weightBigEl = document.getElementById('weightBig');
   const weightSetsLineEl = document.getElementById('weightSetsLine');
@@ -891,27 +918,6 @@
     return best > 0 ? Math.round(best*10)/10 : null;
   }
 
-  function tallySVG(count){
-    const groups = Math.min(Math.floor(count/5), 6);
-    const remainder = groups===6 ? 0 : count % 5;
-    const groupWidth = 24, h = 22;
-    let x = 3, marks = '';
-    for(let g=0; g<groups; g++){
-      for(let i=0;i<4;i++){
-        const lx = x + i*5;
-        marks += `<line x1="${lx}" y1="3" x2="${lx}" y2="${h-3}" stroke="#F2EFE9" stroke-width="2.5" stroke-linecap="round"/>`;
-      }
-      marks += `<line x1="${x-2}" y1="${h-1}" x2="${x+17}" y2="1" stroke="#FF5A45" stroke-width="2.5" stroke-linecap="round"/>`;
-      x += groupWidth;
-    }
-    for(let i=0;i<remainder;i++){
-      const lx = x + i*5;
-      marks += `<line x1="${lx}" y1="3" x2="${lx}" y2="${h-3}" stroke="#F2EFE9" stroke-width="2.5" stroke-linecap="round"/>`;
-    }
-    const width = Math.max(x + remainder*5 + 4, 10);
-    return `<svg viewBox="0 0 ${width} ${h}" width="${width}" height="${h}" aria-hidden="true">${marks}</svg>`;
-  }
-
   function computeTodayVolume(){
     let vol = 0;
     const todayLog = data[todayStr()] || {};
@@ -997,12 +1003,11 @@
     let count = 0;
     const todayLog = data[todayStr()] || {};
     Object.values(todayLog).forEach(sets => sets.forEach(s => { if(s.done) count++; }));
-    tallySvgEl.innerHTML = tallySVG(count);
     const day = SCHEDULE[todayIndex()];
     const totalToday = day.type === 'rest' ? 0 : EXERCISES.filter(e => e.day.includes(day.type)).reduce((sum,e) => sum + e.sets, 0);
     tallyCountEl.textContent = totalToday ? `${count}/${totalToday}` : String(count);
     const pct = totalToday ? Math.min(100, Math.round((count/totalToday)*100)) : 0;
-    document.getElementById('setsTodayRow').style.background = `linear-gradient(to right, rgba(255,193,69,.16) ${pct}%, transparent ${pct}%)`;
+    document.getElementById('pillFill').style.width = pct + '%';
     volCountEl.textContent = `${computeTodayVolume()} kg`;
     weekCountEl.textContent = `${computeWeeklyCompletion()}/6 days`;
     streakChip.textContent = `🔥 ${currentStreak}`;
@@ -1062,11 +1067,85 @@
     showDayModal(cell.dataset.date);
   });
   modalCloseEl.addEventListener('click', () => dayModal.classList.add('hidden'));
+
+  const resetModal = document.getElementById('resetModal');
+  const resetDayBtn = document.getElementById('resetDayBtn');
+  const resetWeekBtn = document.getElementById('resetWeekBtn');
+  document.getElementById('resetOpenBtn').addEventListener('click', () => {
+    resetDayBtn.textContent = 'Reset Today';
+    resetWeekBtn.textContent = 'Reset This Week';
+    resetDayBtn.dataset.armed = '';
+    resetWeekBtn.dataset.armed = '';
+    resetModal.classList.remove('hidden');
+  });
+  document.getElementById('resetModalClose').addEventListener('click', () => resetModal.classList.add('hidden'));
+  resetModal.addEventListener('click', (e) => { if(e.target === resetModal) resetModal.classList.add('hidden'); });
+
+  function armThenConfirm(btn, label, action){
+    btn.addEventListener('click', () => {
+      if(btn.dataset.armed !== 'yes'){
+        btn.dataset.armed = 'yes';
+        btn.textContent = 'Tap again to confirm';
+        setTimeout(() => { btn.dataset.armed = ''; btn.textContent = label; }, 3000);
+        return;
+      }
+      action();
+      btn.dataset.armed = '';
+      btn.textContent = label;
+      resetModal.classList.add('hidden');
+    });
+  }
+  armThenConfirm(resetDayBtn, 'Reset Today', () => {
+    delete data[todayStr()];
+    persist();
+    renderAll();
+  });
+  armThenConfirm(resetWeekBtn, 'Reset This Week', () => {
+    const now = new Date();
+    const idx = jsToScheduleIndex(now.getDay());
+    const monday = new Date(now);
+    monday.setDate(now.getDate() - idx);
+    for(let i=0;i<7;i++){
+      const d = new Date(monday);
+      d.setDate(monday.getDate()+i);
+      delete data[d.toLocaleDateString('en-CA')];
+    }
+    persist();
+    renderAll();
+  });
   dayModal.addEventListener('click', (e) => { if(e.target === dayModal) dayModal.classList.add('hidden'); });
+
+  function formatDuration(days){
+    if(days <= 0) return '0 days';
+    const y = Math.floor(days/365);
+    let rem = days % 365;
+    const mo = Math.floor(rem/30);
+    rem = rem % 30;
+    const w = Math.floor(rem/7);
+    const d = rem % 7;
+    const parts = [];
+    if(y) parts.push(`${y} year${y>1?'s':''}`);
+    if(mo) parts.push(`${mo} month${mo>1?'s':''}`);
+    if(w) parts.push(`${w} week${w>1?'s':''}`);
+    if(d || parts.length===0) parts.push(`${d} day${d!==1?'s':''}`);
+    return parts.join(' ');
+  }
+
+  function formatStartDate(ds){
+    const d = new Date(ds + 'T00:00:00');
+    const dd = String(d.getDate()).padStart(2,'0');
+    const mm = String(d.getMonth()+1).padStart(2,'0');
+    const yy = String(d.getFullYear()).slice(-2);
+    return `${dd}/${mm}/${yy}`;
+  }
 
   function renderStreakPage(){
     streakBigEl.innerHTML = `${currentStreak}<span>day streak</span>`;
+    streakFormattedEl.textContent = currentStreak > 0 ? `= ${formatDuration(currentStreak)}` : '';
     streakBestLineEl.textContent = `Best ever: ${data._meta?.bestStreak||0} days`;
+    if(data._meta?.startDate){
+      streakStartLineEl.textContent = `Started ${formatStartDate(data._meta.startDate)}`;
+    }
 
     const days = 35;
     let cells = '';
@@ -1427,6 +1506,19 @@
       const day = SCHEDULE[selectedIndex];
       const ex = EXERCISES.find(x => x.id === exId && x.day.includes(day.type));
       const sets = ensureToday(exId, ex);
+
+      if(!sets[idx].done){
+        let hasData = false;
+        if(ex.type==='weight') hasData = sets[idx].weight !== '' && sets[idx].reps !== '';
+        else if(ex.type==='bodyweight') hasData = sets[idx].reps !== '';
+        else hasData = sets[idx].seconds !== '';
+        if(!hasData){
+          row.classList.add('shake');
+          setTimeout(() => row.classList.remove('shake'), 400);
+          return;
+        }
+      }
+
       const wasComplete = isDayComplete(todayStr(), day.type);
       const oldPR = computePR(exId, ex);
       sets[idx].done = !sets[idx].done;
@@ -1501,6 +1593,10 @@
       if(res && res.value) data = JSON.parse(res.value);
     }catch(e){ data = {}; }
     if(!data._meta) data._meta = {bestStreak:0};
+    if(!data._meta.startDate){
+      data._meta.startDate = todayStr();
+      persist();
+    }
     document.getElementById('versionTag').textContent = APP_VERSION;
     renderAll();
     checkForUpdate();
