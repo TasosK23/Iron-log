@@ -199,6 +199,10 @@
   <span>⚠️ Not saving right now — keep this open, or today's log could be lost.</span>
   <button type="button" id="retrySave">Retry</button>
 </div>
+<div id="updateBanner" class="save-warning hidden" style="border-color:var(--gold); background:rgba(201,162,39,.12);">
+  <span style="color:var(--gold);">🔄 A newer version is available.</span>
+  <button type="button" id="updateReload" style="border-color:var(--gold); color:var(--gold);">Reload</button>
+</div>
 <div id="app">
   <div id="workoutPage" class="page">
     <div class="hero">
@@ -270,6 +274,7 @@
         <button class="backup-btn confirm hidden" type="button" id="restoreConfirm">Confirm restore (overwrites current log)</button>
         <p class="backup-note" id="backupNote"></p>
       </div>
+      <p style="text-align:center; color:var(--text-muted); font-size:10px; margin:16px 0 4px;">Iron Log · v<span id="versionTag"></span></p>
     </main>
   </div>
 </div>
@@ -292,6 +297,7 @@
 
 <script>
 (function(){
+  const APP_VERSION = '2026.08.27.1';
   const SCHEDULE = [
     {label:'Mon', type:'push'}, {label:'Tue', type:'pull'}, {label:'Wed', type:'legsA'},
     {label:'Thu', type:'push'}, {label:'Fri', type:'pull'}, {label:'Sat', type:'legsB'}, {label:'Sun', type:'rest'},
@@ -1349,13 +1355,30 @@
     persist();
   });
 
+  async function checkForUpdate(){
+    try{
+      const res = await fetch('./version.json?t=' + Date.now(), {cache:'no-store'});
+      if(!res.ok) return;
+      const info = await res.json();
+      if(info.version && info.version !== APP_VERSION){
+        document.getElementById('updateBanner').classList.remove('hidden');
+      }
+    }catch(e){ /* offline or same-origin issue — fail silently */ }
+  }
+  document.getElementById('updateReload').addEventListener('click', () => location.reload());
+
   async function init(){
     try{
       const res = await storageGet(STORAGE_KEY);
       if(res && res.value) data = JSON.parse(res.value);
     }catch(e){ data = {}; }
     if(!data._meta) data._meta = {bestStreak:0};
+    document.getElementById('versionTag').textContent = APP_VERSION;
     renderAll();
+    checkForUpdate();
+    document.addEventListener('visibilitychange', () => {
+      if(document.visibilityState === 'visible') checkForUpdate();
+    });
 
     let lastKnownDate = todayStr();
     setInterval(() => {
