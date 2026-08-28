@@ -310,7 +310,7 @@
 
 <script>
 (function(){
-  const APP_VERSION = '2026.08.27.3';
+  const APP_VERSION = '2026.08.27.4';
   const SCHEDULE = [
     {label:'Mon', type:'push'}, {label:'Tue', type:'pull'}, {label:'Wed', type:'legsA'},
     {label:'Thu', type:'push'}, {label:'Fri', type:'pull'}, {label:'Sat', type:'legsB'}, {label:'Sun', type:'rest'},
@@ -1416,6 +1416,7 @@
     document.getElementById('versionTag').textContent = APP_VERSION;
     renderAll();
     checkForUpdate();
+    setInterval(checkForUpdate, 3*60*1000);
     document.addEventListener('visibilitychange', () => {
       if(document.visibilityState === 'visible') checkForUpdate();
     });
