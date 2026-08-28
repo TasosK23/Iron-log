@@ -315,7 +315,7 @@
 
 <script>
 (function(){
-  const APP_VERSION = '2026.08.27.12';
+  const APP_VERSION = '2026.08.27.13';
   const SCHEDULE = [
     {label:'Mon', type:'push'}, {label:'Tue', type:'pull'}, {label:'Wed', type:'legsA'},
     {label:'Thu', type:'push'}, {label:'Fri', type:'pull'}, {label:'Sat', type:'legsB'}, {label:'Sun', type:'rest'},
@@ -433,12 +433,12 @@
       muscle:'Quads, glutes, hamstrings, balance',
       how:['Step forward into a lunge, back knee dropping toward the floor.','Push through your front heel to step into the next lunge.','Keep your torso upright throughout.'],
       tip:'A longer step targets the glutes more; a shorter step shifts emphasis to the quads.'},
-    {id:'hanging_oblique', day:['legsA'], tag:'Obliques', name:'Hanging Oblique Raise', sets:3, rest:45, badge:'3×10–12/side', type:'bodyweight', targets:[10,10,'F'],
+    {id:'hanging_oblique', day:['legsA','legsB'], tag:'Obliques', name:'Hanging Oblique Raise', sets:3, rest:45, badge:'3×10–12/side', type:'bodyweight', targets:[10,10,'F'],
       blurb:'Uses the equipment you already have for real oblique training — a better pick than a standing side bend for this muscle.',
       muscle:'Obliques, hip flexors, grip',
       how:['Hang from the bar with a full grip.','Raise your knees up and toward one shoulder, keeping the motion controlled.','Lower and repeat on the other side, alternating.'],
       tip:'This isolates rotation and lateral flexion, instead of just loading your spine the way a side bend does.'},
-    {id:'lateral_lunge', day:['legsA'], tag:'Hips', name:'Lateral Lunge', sets:3, rest:60, badge:'3×10–12/side', type:'weight', targets:[10,10,'F'],
+    {id:'lateral_lunge', day:['legsA','legsB'], tag:'Hips', name:'Lateral Lunge', sets:3, rest:60, badge:'3×10–12/side', type:'weight', targets:[10,10,'F'],
       blurb:"The one plane of motion nothing else here trains — side-to-side movement works your hip abductors and adductors, which every squat and forward lunge otherwise skips entirely.",
       muscle:'Glute medius, adductors, quads (working leg)',
       how:['Stand tall, holding a dumbbell at your chest if using one.','Step one leg out wide to the side, bending that knee and sitting your hips back while keeping the other leg straight.','Push through the bent leg\'s heel to return to standing, then repeat on the other side.'],
@@ -459,7 +459,7 @@
       muscle:'Quads, glutes, hamstrings (unilateral)',
       how:['Rest the top of one foot behind you on a sturdy chair, low step, or stack of books.','Lower straight down until your front thigh is roughly parallel to the floor.','Drive through your front heel to stand, keeping most of your weight on the front leg.'],
       tip:'Keep the rear foot lower rather than higher — an overly high surface hurts your balance more than it helps.'},
-    {id:'bird_dog', day:['legsB'], tag:'Lower Back', name:'Bird Dog', sets:3, rest:45, badge:'3×10–12/side', type:'bodyweight', targets:[10,10,10],
+    {id:'bird_dog', day:['legsA','legsB'], tag:'Lower Back', name:'Bird Dog', sets:3, rest:45, badge:'3×10–12/side', type:'bodyweight', targets:[10,10,10],
       blurb:'Swapped in for the Superman hold after rechecking the research — it trains the same lower-back stabilizers with far less spinal compression.',
       muscle:'Erector spinae, deep core (transverse abdominis), glutes, shoulder stabilizers',
       how:['Start on hands and knees, hands under shoulders, knees under hips.','Extend one arm forward and the opposite leg back at the same time, keeping your hips and shoulders level.','Hold briefly at full extension, then return under control and switch sides.'],
