@@ -295,9 +295,22 @@
   </div>
 </div>
 
+<div class="modal-overlay hidden" id="sessionModal">
+  <div class="modal-card" style="text-align:center;">
+    <div style="font-size:38px;">🎉</div>
+    <h3 style="font-family:'Oswald',sans-serif; font-size:21px; margin:6px 0 2px;">Session Complete</h3>
+    <p style="color:var(--text-muted); font-size:12.5px; margin:0 0 14px;" id="sessionSubtitle"></p>
+    <div class="modal-row"><span>Sets completed</span><span class="modal-vals" id="sessionSets"></span></div>
+    <div class="modal-row"><span>Volume lifted</span><span class="modal-vals" id="sessionVolume"></span></div>
+    <div class="modal-row"><span>Time taken</span><span class="modal-vals" id="sessionTime"></span></div>
+    <div class="modal-row"><span>Current streak</span><span class="modal-vals" id="sessionStreak"></span></div>
+    <button class="backup-btn" id="sessionModalClose" type="button" style="width:100%; margin-top:16px;">Nice 🔥</button>
+  </div>
+</div>
+
 <script>
 (function(){
-  const APP_VERSION = '2026.08.27.1';
+  const APP_VERSION = '2026.08.27.2';
   const SCHEDULE = [
     {label:'Mon', type:'push'}, {label:'Tue', type:'pull'}, {label:'Wed', type:'legsA'},
     {label:'Thu', type:'push'}, {label:'Fri', type:'pull'}, {label:'Sat', type:'legsB'}, {label:'Sun', type:'rest'},
@@ -939,6 +952,33 @@
     streakChip.textContent = `🔥 ${currentStreak}`;
   }
 
+  function formatElapsed(ms){
+    const totalMin = Math.round(ms/60000);
+    const h = Math.floor(totalMin/60), m = totalMin%60;
+    return h > 0 ? `${h}h ${m}m` : `${m} min`;
+  }
+
+  function markSessionStarted(){
+    if(!data._meta) data._meta = {bestStreak:0};
+    if(!data._meta.sessionStarts) data._meta.sessionStarts = {};
+    if(!data._meta.sessionStarts[todayStr()]) data._meta.sessionStarts[todayStr()] = Date.now();
+  }
+
+  function showSessionComplete(dayType){
+    const startedAt = data._meta?.sessionStarts?.[todayStr()];
+    const elapsed = startedAt ? Date.now() - startedAt : null;
+    const list = EXERCISES.filter(e => e.day.includes(dayType));
+    const totalSets = list.reduce((s,e) => s + e.sets, 0);
+    document.getElementById('sessionSubtitle').textContent = `${DAY_TITLE[dayType]} — fully logged. Next up: ${getTomorrowLabel()}.`;
+    document.getElementById('sessionSets').textContent = `${totalSets}/${totalSets}`;
+    document.getElementById('sessionVolume').textContent = `${computeTodayVolume()} kg`;
+    document.getElementById('sessionTime').textContent = elapsed ? formatElapsed(elapsed) : '—';
+    document.getElementById('sessionStreak').textContent = `${currentStreak} day${currentStreak!==1?'s':''}`;
+    document.getElementById('sessionModal').classList.remove('hidden');
+  }
+  document.getElementById('sessionModalClose').addEventListener('click', () => document.getElementById('sessionModal').classList.add('hidden'));
+  document.getElementById('sessionModal').addEventListener('click', (e) => { if(e.target.id === 'sessionModal') e.currentTarget.classList.add('hidden'); });
+
   function showDayModal(dateStr){
     const log = data[dateStr];
     const dateObj = new Date(dateStr + 'T00:00:00');
@@ -1308,7 +1348,7 @@
       const card = document.querySelector(`.card[data-card="${exId}"]`);
       card.classList.toggle('stamped', sets.every(s => s.done));
       persist();
-      if(sets[idx].done){ primeAudio(); startRest(ex.rest); }
+      if(sets[idx].done){ primeAudio(); startRest(ex.rest); markSessionStarted(); }
       renderAll();
       const newPR = computePR(exId, ex);
       const gotPR = sets[idx].done && newPR && newPR !== oldPR;
@@ -1316,7 +1356,7 @@
       if(gotPR){
         showToast(`🏆 New PR — ${ex.name}: ${newPR}`);
       }else if(dayJustCompleted){
-        showToast(`🔥 Day complete! Streak: ${currentStreak} · Next: ${getTomorrowLabel()}`);
+        showSessionComplete(day.type);
       }
     }
   });
