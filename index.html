@@ -115,6 +115,11 @@
   .copy-btn:active{ transform:scale(.95); }
   .same-weight-btn{ display:block; width:100%; background:var(--surface-2); border:1px solid var(--border); color:var(--gold); font-family:'Inter'; font-size:11.5px; font-weight:600; padding:8px; border-radius:6px; cursor:pointer; margin:0 0 10px; }
   .same-weight-btn:active{ transform:scale(.98); }
+  .fill-all-btn{ display:block; width:calc(100% - 40px); margin:0 20px 14px; background:linear-gradient(135deg, rgba(255,193,69,.16), rgba(255,90,69,.08)); border:1px solid var(--gold); color:var(--gold); font-family:'Inter'; font-size:12.5px; font-weight:600; padding:11px; border-radius:8px; cursor:pointer; }
+  .fill-all-btn:active{ transform:scale(.98); }
+
+  .progress-track{ height:4px; background:var(--surface-2); border-radius:2px; overflow:hidden; margin:6px 0 14px; }
+  .progress-fill{ height:100%; background:linear-gradient(90deg, var(--gold), var(--accent)); border-radius:2px; transition:width .3s ease; }
 
   .weight-card{ text-align:center; }
   .weight-big{ font-family:'Oswald',sans-serif; font-weight:700; font-size:44px; color:var(--gold); line-height:1; margin:10px 0 2px; text-shadow:0 0 28px rgba(255,193,69,.35); }
@@ -217,6 +222,7 @@
       <p class="greeting" id="greeting"></p>
       <div class="day-title" id="dayTitle"></div>
       <p class="day-meta" id="dayMeta"></p>
+      <div class="progress-track"><div class="progress-fill" id="dayProgressFill" style="width:0%;"></div></div>
       <div class="stat-row"><span class="stat-label">Sets today</span><div id="tallySvg"></div><span class="stat-value" id="tallyCount">0</span></div>
       <div class="stat-row"><span class="stat-label">Volume today</span><span class="stat-value" id="volCount">0 kg</span></div>
       <div class="stat-row"><span class="stat-label">This week</span><span class="stat-value" id="weekCount">0/6 days</span></div>
@@ -313,7 +319,7 @@
 
 <script>
 (function(){
-  const APP_VERSION = '2026.08.27.9';
+  const APP_VERSION = '2026.08.27.10';
   const SCHEDULE = [
     {label:'Mon', type:'push'}, {label:'Tue', type:'pull'}, {label:'Wed', type:'legsA'},
     {label:'Thu', type:'push'}, {label:'Fri', type:'pull'}, {label:'Sat', type:'legsB'}, {label:'Sun', type:'rest'},
@@ -773,6 +779,32 @@
     return null;
   }
 
+  function hasAnyHistory(dayType){
+    return EXERCISES.filter(e => e.day.includes(dayType) && e.type==='weight')
+      .some(ex => lastSessionSets(ex.id));
+  }
+
+  function fillAllFromLastSession(dayType){
+    const list = EXERCISES.filter(e => e.day.includes(dayType) && e.type==='weight');
+    let filledAny = false;
+    list.forEach(ex => {
+      const last = lastSessionSets(ex.id);
+      if(!last) return;
+      const sets = ensureToday(ex.id, ex);
+      sets.forEach((s,i) => {
+        const src = last[i] || last[last.length-1];
+        s.weight = src.weight;
+        s.reps = src.reps;
+        filledAny = true;
+      });
+    });
+    if(filledAny){
+      persist();
+      renderCards();
+      updateStats();
+    }
+  }
+
   function lastSessionSummary(exId, ex){
     const done = lastSessionSets(exId);
     if(!done) return null;
@@ -958,6 +990,8 @@
     const day = SCHEDULE[todayIndex()];
     const totalToday = day.type === 'rest' ? 0 : EXERCISES.filter(e => e.day.includes(day.type)).reduce((sum,e) => sum + e.sets, 0);
     tallyCountEl.textContent = totalToday ? `${count}/${totalToday}` : String(count);
+    const pct = totalToday ? Math.min(100, Math.round((count/totalToday)*100)) : 0;
+    document.getElementById('dayProgressFill').style.width = pct + '%';
     volCountEl.textContent = `${computeTodayVolume()} kg`;
     weekCountEl.textContent = `${computeWeeklyCompletion()}/6 days`;
     streakChip.textContent = `🔥 ${currentStreak}`;
@@ -1204,7 +1238,10 @@
     } else {
       const locked = selectedIndex !== todayIndex();
       const list = EXERCISES.filter(e => e.day.includes(day.type));
-      html += prepCardHTML(day.type) + list.map(ex => cardHTML(ex, locked)).join('');
+      const fillBtn = (!locked && hasAnyHistory(day.type))
+        ? `<button class="fill-all-btn" type="button" data-action="fillall" data-day="${day.type}">↻ Fill all weights from last time</button>`
+        : '';
+      html += fillBtn + prepCardHTML(day.type) + list.map(ex => cardHTML(ex, locked)).join('');
     }
     cardListEl.innerHTML = html;
   }
@@ -1352,6 +1389,11 @@
       }
       return;
     }
+    const fillAllBtn = e.target.closest('.fill-all-btn');
+    if(fillAllBtn){
+      fillAllFromLastSession(fillAllBtn.dataset.day);
+      return;
+    }
     const sameWtBtn = e.target.closest('.same-weight-btn');
     if(sameWtBtn){
       const exId = sameWtBtn.dataset.ex;
@@ -1377,6 +1419,7 @@
       const wasComplete = isDayComplete(todayStr(), day.type);
       const oldPR = computePR(exId, ex);
       sets[idx].done = !sets[idx].done;
+      if(sets[idx].done && navigator.vibrate){ try{ navigator.vibrate(15); }catch(e){} }
       row.classList.toggle('is-done', sets[idx].done);
       checkBtn.textContent = sets[idx].done ? '✓' : '';
       const card = document.querySelector(`.card[data-card="${exId}"]`);
