@@ -353,7 +353,7 @@
 
 <script>
 (function(){
-  const APP_VERSION = '2026.08.29.2';
+  const APP_VERSION = '2026.08.29.3';
   const SCHEDULE = [
     {label:'Mon', type:'push'}, {label:'Tue', type:'pull'}, {label:'Wed', type:'legsA'},
     {label:'Thu', type:'push'}, {label:'Fri', type:'pull'}, {label:'Sat', type:'legsB'}, {label:'Sun', type:'rest'},
@@ -419,6 +419,11 @@
       muscle:'Deep core, obliques, shoulders (isometric)',
       how:['Forearms on the floor, elbows under your shoulders, body in a straight line.','Squeeze your glutes and abs — don\'t let your hips sag or pike up.','Breathe normally and hold for time.'],
       tip:'A harder, shorter plank with perfect form beats a long one with a sagging back.'},
+    {id:'floor_crunch', day:['push'], tag:'Core', name:'Floor Crunch', sets:3, rest:45, badge:'3×15–20', type:'bodyweight', targets:[15,15,'F'],
+      blurb:"The one ab function nothing else here trains — dynamic spinal flexion. Plank holds still, leg raises work through the hips; this is the only move that actually curls your spine.",
+      muscle:'Rectus abdominis (upper emphasis via spinal flexion)',
+      how:['Lie on your back, knees bent, feet flat on the floor, hands lightly behind your head or crossed over your chest.','Curl your shoulders and upper back up off the floor by flexing your spine, not by pulling on your neck.','Lower back down under control without letting your shoulders fully relax between reps.'],
+      tip:"Keep tension on your abs the whole set — don't let your shoulders rest on the floor until the set is actually over."},
 
     {id:'pullup', day:['pull'], tag:'Back', name:'Pull-Up', sets:4, rest:120, badge:'4×AMRAP', type:'bodyweight', targets:['F','F','F','F'],
       blurb:'Unmatched for lat width with just a bar — the heaviest compound of the day, so it gets the longest rest.',
