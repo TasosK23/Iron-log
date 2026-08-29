@@ -341,7 +341,7 @@
 
 <script>
 (function(){
-  const APP_VERSION = '2026.08.28.2';
+  const APP_VERSION = '2026.08.28.3';
   const SCHEDULE = [
     {label:'Mon', type:'push'}, {label:'Tue', type:'pull'}, {label:'Wed', type:'legsA'},
     {label:'Thu', type:'push'}, {label:'Fri', type:'pull'}, {label:'Sat', type:'legsB'}, {label:'Sun', type:'rest'},
@@ -770,12 +770,20 @@
     </svg>`;
   }
 
+  function getSelectedDateStr(){
+    const offset = selectedIndex - todayIndex();
+    const d = new Date();
+    d.setDate(d.getDate() + offset);
+    return d.toLocaleDateString('en-CA');
+  }
+
   function getDisplaySets(exId, ex, locked){
     if(!locked) return ensureToday(exId, ex);
-    const done = lastSessionSets(exId);
+    const selDate = getSelectedDateStr();
+    const log = (data[selDate] || {})[exId];
     const result = [];
     for(let i=0; i<ex.sets; i++){
-      result.push(done && done[i] ? done[i] : emptySet(ex.type));
+      result.push(log && log[i] ? log[i] : emptySet(ex.type));
     }
     return result;
   }
