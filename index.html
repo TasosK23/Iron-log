@@ -341,7 +341,7 @@
 
 <script>
 (function(){
-  const APP_VERSION = '2026.08.28.1';
+  const APP_VERSION = '2026.08.28.2';
   const SCHEDULE = [
     {label:'Mon', type:'push'}, {label:'Tue', type:'pull'}, {label:'Wed', type:'legsA'},
     {label:'Thu', type:'push'}, {label:'Fri', type:'pull'}, {label:'Sat', type:'legsB'}, {label:'Sun', type:'rest'},
@@ -1601,19 +1601,23 @@
     renderAll();
     checkForUpdate();
     setInterval(checkForUpdate, 3*60*1000);
-    document.addEventListener('visibilitychange', () => {
-      if(document.visibilityState === 'visible') checkForUpdate();
-    });
 
     let lastKnownDate = todayStr();
-    setInterval(() => {
+    function checkDayRollover(){
       const nowStr = todayStr();
       if(nowStr !== lastKnownDate){
         lastKnownDate = nowStr;
         selectedIndex = todayIndex();
         renderAll();
       }
-    }, 60000);
+    }
+    document.addEventListener('visibilitychange', () => {
+      if(document.visibilityState === 'visible'){
+        checkForUpdate();
+        checkDayRollover();
+      }
+    });
+    setInterval(checkDayRollover, 60000);
   }
   init();
 })();
