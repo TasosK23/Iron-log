@@ -268,6 +268,13 @@
         <p class="month-compare" id="monthCompare"></p>
       </div>
 
+      <div class="card pr-card">
+        <span class="card-tag">Records</span>
+        <div class="card-head"><span class="card-name">Personal Records</span></div>
+        <p class="card-blurb">Your best-ever set for every exercise you've logged so far.</p>
+        <div id="prList"></div>
+      </div>
+
       <div class="card bw-card">
         <span class="card-tag">Body</span>
         <div class="card-head"><span class="card-name">Bodyweight</span></div>
@@ -341,7 +348,7 @@
 
 <script>
 (function(){
-  const APP_VERSION = '2026.08.28.3';
+  const APP_VERSION = '2026.08.28.4';
   const SCHEDULE = [
     {label:'Mon', type:'push'}, {label:'Tue', type:'pull'}, {label:'Wed', type:'legsA'},
     {label:'Thu', type:'push'}, {label:'Fri', type:'pull'}, {label:'Sat', type:'legsB'}, {label:'Sun', type:'rest'},
@@ -1147,6 +1154,14 @@
     return `${dd}/${mm}/${yy}`;
   }
 
+  function renderPRList(){
+    const rows = EXERCISES.map(ex => {
+      const pr = computePR(ex.id, ex);
+      return pr ? `<div class="modal-row"><span>${ex.name}</span><span class="modal-vals">${pr}</span></div>` : '';
+    }).filter(Boolean).join('');
+    document.getElementById('prList').innerHTML = rows || `<p class="modal-empty">No PRs yet — log a set to start building this list.</p>`;
+  }
+
   function renderStreakPage(){
     streakBigEl.innerHTML = `${currentStreak}<span>day streak</span>`;
     streakFormattedEl.textContent = currentStreak > 0 ? `= ${formatDuration(currentStreak)}` : '';
@@ -1154,6 +1169,7 @@
     if(data._meta?.startDate){
       streakStartLineEl.textContent = `Started ${formatStartDate(data._meta.startDate)}`;
     }
+    renderPRList();
 
     const days = 35;
     let cells = '';
