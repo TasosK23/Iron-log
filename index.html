@@ -32,7 +32,7 @@
   .toast.show{ opacity:1; transform:translateX(-50%) translateY(0); }
 
   .page-tabs{ display:flex; gap:8px; padding:14px 20px 0; max-width:520px; margin:0 auto; }
-  .page-tab{ flex:1; font-family:'Oswald',sans-serif; font-weight:600; font-size:13px; letter-spacing:.5px; text-transform:uppercase; padding:10px; border-radius:8px 8px 0 0; background:var(--surface); border:1px solid var(--border); border-bottom:none; color:var(--text-muted); cursor:pointer; transition:background-color .15s ease, color .15s ease, border-color .15s ease; }
+  .page-tab{ flex:1; font-family:'Oswald',sans-serif; font-weight:600; font-size:11.5px; letter-spacing:.3px; text-transform:uppercase; padding:10px 4px; border-radius:8px 8px 0 0; background:var(--surface); border:1px solid var(--border); border-bottom:none; color:var(--text-muted); cursor:pointer; transition:background-color .15s ease, color .15s ease, border-color .15s ease; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
   .page-tab.active{ background:var(--bg); color:var(--text); border-color:var(--gold); position:relative; }
   .page-tab.active::after{ content:''; position:absolute; left:0; right:0; bottom:-1px; height:2px; background:var(--bg); }
   .page.hidden{ display:none; }
@@ -208,6 +208,7 @@
 <div class="page-tabs">
   <button class="page-tab active" type="button" data-page="workout">Workout</button>
   <button class="page-tab" type="button" data-page="streak">🔥 Streak</button>
+  <button class="page-tab" type="button" data-page="misc">Miscellaneous</button>
 </div>
 <div id="saveWarning" class="save-warning hidden">
   <span>⚠️ Not saving right now — keep this open, or today's log could be lost.</span>
@@ -274,7 +275,11 @@
         <p class="card-blurb">Your best-ever set for every exercise you've logged so far.</p>
         <div id="prList"></div>
       </div>
+    </main>
+  </div>
 
+  <div id="miscPage" class="page hidden">
+    <main style="padding-top:20px;">
       <div class="card bw-card">
         <span class="card-tag">Body</span>
         <div class="card-head"><span class="card-name">Bodyweight</span></div>
@@ -348,7 +353,7 @@
 
 <script>
 (function(){
-  const APP_VERSION = '2026.08.28.4';
+  const APP_VERSION = '2026.08.28.5';
   const SCHEDULE = [
     {label:'Mon', type:'push'}, {label:'Tue', type:'pull'}, {label:'Wed', type:'legsA'},
     {label:'Thu', type:'push'}, {label:'Fri', type:'pull'}, {label:'Sat', type:'legsB'}, {label:'Sun', type:'rest'},
@@ -1456,6 +1461,7 @@
   function showPage(page){
     document.getElementById('workoutPage').classList.toggle('hidden', page !== 'workout');
     document.getElementById('streakPage').classList.toggle('hidden', page !== 'streak');
+    document.getElementById('miscPage').classList.toggle('hidden', page !== 'misc');
     document.querySelectorAll('.page-tab').forEach(btn => {
       btn.classList.toggle('active', btn.dataset.page === page);
     });
