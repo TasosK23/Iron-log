@@ -355,7 +355,7 @@
 
 <script>
 (function(){
-  const APP_VERSION = '2026.08.30.3';
+  const APP_VERSION = '2026.08.30.4';
   const SCHEDULE = [
     {label:'Mon', type:'push'}, {label:'Tue', type:'pull'}, {label:'Wed', type:'legsA'},
     {label:'Thu', type:'push'}, {label:'Fri', type:'pull'}, {label:'Sat', type:'legsB'}, {label:'Sun', type:'rest'},
@@ -716,18 +716,34 @@
     }
     container.classList.remove('hidden');
 
-    const w = 260, h = 56, pad = 6;
+    const marginLeft = 30, marginTop = 6, marginBottom = 6, marginRight = 6;
+    const plotW = 230, plotH = 56;
+    const w = marginLeft + plotW + marginRight;
+    const h = marginTop + plotH + marginBottom;
+
     const vals = entries.map(e => e.val);
-    const min = Math.min(...vals), max = Math.max(...vals);
-    const range = (max-min) || 1;
-    const stepX = (w - pad*2) / (entries.length-1);
+    const rawMin = Math.min(...vals), rawMax = Math.max(...vals);
+    const step = (rawMax - rawMin <= 6) ? 1 : 2;
+    const min = Math.floor(rawMin/step)*step;
+    const max = Math.ceil(rawMax/step)*step;
+    const range = (max-min) || step;
+
+    const stepX = entries.length > 1 ? plotW/(entries.length-1) : 0;
     const coords = entries.map((e,i) => ({
-      x: pad + i*stepX,
-      y: h - pad - ((e.val-min)/range)*(h-pad*2),
+      x: marginLeft + i*stepX,
+      y: marginTop + plotH - ((e.val-min)/range)*plotH,
       date: e.date, val: e.val
     }));
+
+    let gridSvg = '';
+    for(let v=min; v<=max+0.001; v+=step){
+      const y = marginTop + plotH - ((v-min)/range)*plotH;
+      gridSvg += `<line x1="${marginLeft}" y1="${y.toFixed(1)}" x2="${marginLeft+plotW}" y2="${y.toFixed(1)}" style="stroke:var(--border); stroke-width:1;"/>`;
+      gridSvg += `<text x="${marginLeft-5}" y="${(y+2.8).toFixed(1)}" text-anchor="end" style="font-size:8px; font-family:'JetBrains Mono',monospace; fill:var(--text-muted);">${Math.round(v*10)/10}</text>`;
+    }
+
     const path = 'M' + coords.map(c=>`${c.x.toFixed(1)},${c.y.toFixed(1)}`).join(' L');
-    const areaPath = path + ` L${coords[coords.length-1].x.toFixed(1)},${h} L${coords[0].x.toFixed(1)},${h} Z`;
+    const areaPath = path + ` L${coords[coords.length-1].x.toFixed(1)},${marginTop+plotH} L${coords[0].x.toFixed(1)},${marginTop+plotH} Z`;
     const gid = 'bwg' + Math.random().toString(36).slice(2,8);
     const last = coords[coords.length-1];
 
@@ -737,9 +753,10 @@
           <stop offset="0%" style="stop-color:var(--gold); stop-opacity:0.35;"/>
           <stop offset="100%" style="stop-color:var(--gold); stop-opacity:0;"/>
         </linearGradient></defs>
+        ${gridSvg}
         <path d="${areaPath}" style="fill:url(#${gid}); stroke:none;"/>
         <path d="${path}" style="fill:none; stroke:var(--gold); stroke-width:2; stroke-linecap:round; stroke-linejoin:round;"/>
-        <line id="bwScrubLine" x1="${last.x}" y1="0" x2="${last.x}" y2="${h}" style="stroke:var(--text-muted); stroke-width:1; opacity:0;"/>
+        <line id="bwScrubLine" x1="${last.x}" y1="${marginTop}" x2="${last.x}" y2="${marginTop+plotH}" style="stroke:var(--text-muted); stroke-width:1; opacity:0;"/>
         <circle id="bwScrubDot" cx="${last.x}" cy="${last.y}" r="4" style="fill:var(--gold);"/>
       </svg>
       <div id="bwTooltip" style="position:absolute; top:-4px; background:var(--surface-2); border:1px solid var(--gold); border-radius:5px; padding:3px 7px; font-family:'JetBrains Mono',monospace; font-size:10.5px; color:var(--text); white-space:nowrap; opacity:0; pointer-events:none; transform:translateX(-50%);"></div>
