@@ -129,8 +129,6 @@
   .weight-big span{ font-size:14px; color:var(--text-muted); font-family:'Inter'; font-weight:500; display:block; margin-top:6px; text-transform:none; letter-spacing:0; }
   .month-compare{ font-family:'JetBrains Mono',monospace; font-size:11.5px; color:var(--text-muted); margin:8px 0 0; }
   .bw-input{ flex:1; background:var(--surface-2); border:1px solid var(--border); color:var(--text); font-family:'JetBrains Mono',monospace; font-size:14px; border-radius:6px; padding:9px 10px; min-width:0; }
-  .bw-delete{ background:none; border:none; color:var(--text-muted); font-size:13px; padding:2px 6px; margin-left:8px; cursor:pointer; }
-  .bw-delete:active{ transform:scale(.9); }
 
   .backup-btn{ flex:1; background:var(--surface-2); border:1px solid var(--border); color:var(--text); font-family:'Inter'; font-size:12px; font-weight:600; padding:9px 8px; border-radius:6px; cursor:pointer; }
   .backup-btn.hidden{ display:none; }
@@ -291,7 +289,6 @@
           <button class="backup-btn" id="bwLogBtn" type="button">Log</button>
         </div>
         <div class="trend-chart hidden" id="bwTrend"></div>
-        <div id="bwList"></div>
       </div>
 
       <div class="card backup-card">
@@ -356,7 +353,7 @@
 
 <script>
 (function(){
-  const APP_VERSION = '2026.08.30.1';
+  const APP_VERSION = '2026.08.30.2';
   const SCHEDULE = [
     {label:'Mon', type:'push'}, {label:'Tue', type:'pull'}, {label:'Wed', type:'legsA'},
     {label:'Thu', type:'push'}, {label:'Fri', type:'pull'}, {label:'Sat', type:'legsB'}, {label:'Sun', type:'rest'},
@@ -692,45 +689,96 @@
     const log = data._meta?.bodyweightLog || {};
     return Object.keys(log).sort().slice(-10).map(d => log[d]);
   }
+  function getBodyweightEntries(){
+    const log = data._meta?.bodyweightLog || {};
+    return Object.keys(log).sort().slice(-10).map(d => ({date: d, val: log[d]}));
+  }
   function logBodyweight(kg){
     if(!data._meta) data._meta = {bestStreak:0};
     if(!data._meta.bodyweightLog) data._meta.bodyweightLog = {};
     data._meta.bodyweightLog[todayStr()] = kg;
     persist();
   }
+
   function renderBodyweight(){
-    const points = getBodyweightPoints();
-    const el = document.getElementById('bwTrend');
-    if(points.length >= 2){
-      el.innerHTML = trendSVG(points);
-      el.classList.remove('hidden');
-    } else if(points.length === 1){
-      el.innerHTML = `<p style="text-align:center; color:var(--text-muted); font-size:11px; padding:8px 0; margin:0;">Log one more day to see a trend</p>`;
-      el.classList.remove('hidden');
-    } else {
-      el.classList.add('hidden');
+    const entries = getBodyweightEntries();
+    const container = document.getElementById('bwTrend');
+    if(entries.length < 2){
+      if(entries.length === 1){
+        container.innerHTML = `<p style="text-align:center; color:var(--text-muted); font-size:11px; padding:8px 0; margin:0;">Log one more day to see a trend</p>`;
+        container.classList.remove('hidden');
+      } else {
+        container.classList.add('hidden');
+      }
+      return;
     }
-    renderBodyweightList();
+    container.classList.remove('hidden');
+
+    const w = 260, h = 56, pad = 6;
+    const vals = entries.map(e => e.val);
+    const min = Math.min(...vals), max = Math.max(...vals);
+    const range = (max-min) || 1;
+    const stepX = (w - pad*2) / (entries.length-1);
+    const coords = entries.map((e,i) => ({
+      x: pad + i*stepX,
+      y: h - pad - ((e.val-min)/range)*(h-pad*2),
+      date: e.date, val: e.val
+    }));
+    const path = 'M' + coords.map(c=>`${c.x.toFixed(1)},${c.y.toFixed(1)}`).join(' L');
+    const areaPath = path + ` L${coords[coords.length-1].x.toFixed(1)},${h} L${coords[0].x.toFixed(1)},${h} Z`;
+    const gid = 'bwg' + Math.random().toString(36).slice(2,8);
+    const last = coords[coords.length-1];
+
+    container.innerHTML = `<div style="position:relative;">
+      <svg id="bwSvg" viewBox="0 0 ${w} ${h}" width="100%" height="${h}" preserveAspectRatio="none" style="touch-action:pan-y;">
+        <defs><linearGradient id="${gid}" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" style="stop-color:var(--gold); stop-opacity:0.35;"/>
+          <stop offset="100%" style="stop-color:var(--gold); stop-opacity:0;"/>
+        </linearGradient></defs>
+        <path d="${areaPath}" style="fill:url(#${gid}); stroke:none;"/>
+        <path d="${path}" style="fill:none; stroke:var(--gold); stroke-width:2; stroke-linecap:round; stroke-linejoin:round;"/>
+        <line id="bwScrubLine" x1="${last.x}" y1="0" x2="${last.x}" y2="${h}" style="stroke:var(--text-muted); stroke-width:1; opacity:0;"/>
+        <circle id="bwScrubDot" cx="${last.x}" cy="${last.y}" r="4" style="fill:var(--gold);"/>
+      </svg>
+      <div id="bwTooltip" style="position:absolute; top:-4px; background:var(--surface-2); border:1px solid var(--gold); border-radius:5px; padding:3px 7px; font-family:'JetBrains Mono',monospace; font-size:10.5px; color:var(--text); white-space:nowrap; opacity:0; pointer-events:none; transform:translateX(-50%);"></div>
+    </div>`;
+
+    const svg = document.getElementById('bwSvg');
+    const dot = document.getElementById('bwScrubDot');
+    const line = document.getElementById('bwScrubLine');
+    const tooltip = document.getElementById('bwTooltip');
+
+    function updateScrub(clientX){
+      const rect = svg.getBoundingClientRect();
+      const relX = Math.max(0, Math.min(rect.width, clientX - rect.left));
+      const viewX = (relX / rect.width) * w;
+      let nearest = coords[0], minDist = Infinity;
+      coords.forEach(c => { const d = Math.abs(c.x - viewX); if(d < minDist){ minDist = d; nearest = c; } });
+      dot.setAttribute('cx', nearest.x);
+      dot.setAttribute('cy', nearest.y);
+      line.setAttribute('x1', nearest.x);
+      line.setAttribute('x2', nearest.x);
+      line.setAttribute('opacity', '1');
+      const dateObj = new Date(nearest.date + 'T00:00:00');
+      const label = dateObj.toLocaleDateString(undefined, {month:'short', day:'numeric'});
+      tooltip.textContent = `${label}: ${nearest.val}kg`;
+      tooltip.style.left = `${(nearest.x/w)*100}%`;
+      tooltip.style.opacity = '1';
+    }
+    function resetScrub(){
+      dot.setAttribute('cx', last.x);
+      dot.setAttribute('cy', last.y);
+      line.setAttribute('opacity', '0');
+      tooltip.style.opacity = '0';
+    }
+    svg.addEventListener('touchstart', e => updateScrub(e.touches[0].clientX), {passive:true});
+    svg.addEventListener('touchmove', e => { updateScrub(e.touches[0].clientX); e.preventDefault(); }, {passive:false});
+    svg.addEventListener('touchend', resetScrub);
+    svg.addEventListener('mousedown', e => updateScrub(e.clientX));
+    svg.addEventListener('mousemove', e => { if(e.buttons===1) updateScrub(e.clientX); });
+    svg.addEventListener('mouseleave', resetScrub);
   }
 
-  function renderBodyweightList(){
-    const log = data._meta?.bodyweightLog || {};
-    const dates = Object.keys(log).sort().reverse().slice(0, 15);
-    const el = document.getElementById('bwList');
-    if(!dates.length){ el.innerHTML = ''; return; }
-    el.innerHTML = dates.map(d => {
-      const dateObj = new Date(d + 'T00:00:00');
-      const label = dateObj.toLocaleDateString(undefined, {month:'short', day:'numeric'});
-      return `<div class="modal-row"><span>${label}</span><span class="modal-vals">${log[d]}kg<button class="bw-delete" type="button" data-date="${d}">✕</button></span></div>`;
-    }).join('');
-  }
-  document.getElementById('bwList').addEventListener('click', (e) => {
-    const btn = e.target.closest('.bw-delete');
-    if(!btn) return;
-    delete data._meta.bodyweightLog[btn.dataset.date];
-    persist();
-    renderBodyweight();
-  });
   document.getElementById('bwLogBtn').addEventListener('click', () => {
     const input = document.getElementById('bwInput');
     const val = Number(input.value);
