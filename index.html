@@ -76,6 +76,8 @@
   .day-meta{ color:var(--text-muted); font-size:12.5px; margin:2px 0 14px; line-height:1.5; }
 
   .stat-row{ display:flex; align-items:center; gap:10px; padding:3px 0; }
+  .stat-row.hidden{ display:none; }
+  .pill-track.hidden{ display:none; }
   .stat-label{ font-family:'JetBrains Mono',monospace; font-size:11px; letter-spacing:1px; color:var(--text-muted); text-transform:uppercase; white-space:nowrap; }
   .stat-value{ font-family:'JetBrains Mono',monospace; font-size:13px; color:var(--gold); margin-left:auto; }
   .pill-track{ height:8px; background:var(--surface-2); border-radius:999px; overflow:hidden; margin:2px 0 3px; }
@@ -231,9 +233,9 @@
       <p class="greeting" id="greeting"></p>
       <div class="day-title" id="dayTitle"></div>
       <p class="day-meta" id="dayMeta"></p>
-      <div class="stat-row"><span class="stat-label">Sets today</span><span class="stat-value" id="tallyCount">0</span></div>
-      <div class="pill-track"><div class="pill-fill" id="pillFill"></div></div>
-      <div class="stat-row"><span class="stat-label">Volume today</span><span class="stat-value" id="volCount">0 kg</span></div>
+      <div class="stat-row" id="setsTodayRow"><span class="stat-label">Sets today</span><span class="stat-value" id="tallyCount">0</span></div>
+      <div class="pill-track" id="pillTrack"><div class="pill-fill" id="pillFill"></div></div>
+      <div class="stat-row" id="volTodayRow"><span class="stat-label">Volume today</span><span class="stat-value" id="volCount">0 kg</span></div>
       <div class="stat-row"><span class="stat-label">This week</span><span class="stat-value" id="weekCount">0/6 days</span></div>
     </div>
     <nav class="week" id="week"></nav>
@@ -353,7 +355,7 @@
 
 <script>
 (function(){
-  const APP_VERSION = '2026.08.30.2';
+  const APP_VERSION = '2026.08.30.3';
   const SCHEDULE = [
     {label:'Mon', type:'push'}, {label:'Tue', type:'pull'}, {label:'Wed', type:'legsA'},
     {label:'Thu', type:'push'}, {label:'Fri', type:'pull'}, {label:'Sat', type:'legsB'}, {label:'Sun', type:'rest'},
@@ -762,7 +764,12 @@
       const dateObj = new Date(nearest.date + 'T00:00:00');
       const label = dateObj.toLocaleDateString(undefined, {month:'short', day:'numeric'});
       tooltip.textContent = `${label}: ${nearest.val}kg`;
-      tooltip.style.left = `${(nearest.x/w)*100}%`;
+      const pct = (nearest.x/w)*100;
+      let anchor = '-50%';
+      if(pct < 15) anchor = '0%';
+      else if(pct > 85) anchor = '-100%';
+      tooltip.style.transform = `translateX(${anchor})`;
+      tooltip.style.left = `${pct}%`;
       tooltip.style.opacity = '1';
     }
     function resetScrub(){
@@ -1100,7 +1107,11 @@
     const todayLog = data[todayStr()] || {};
     Object.values(todayLog).forEach(sets => sets.forEach(s => { if(s.done) count++; }));
     const day = SCHEDULE[todayIndex()];
-    const totalToday = day.type === 'rest' ? 0 : EXERCISES.filter(e => e.day.includes(day.type)).reduce((sum,e) => sum + e.sets, 0);
+    const isRest = day.type === 'rest';
+    document.getElementById('setsTodayRow').classList.toggle('hidden', isRest);
+    document.getElementById('pillTrack').classList.toggle('hidden', isRest);
+    document.getElementById('volTodayRow').classList.toggle('hidden', isRest);
+    const totalToday = isRest ? 0 : EXERCISES.filter(e => e.day.includes(day.type)).reduce((sum,e) => sum + e.sets, 0);
     tallyCountEl.textContent = totalToday ? `${count}/${totalToday}` : String(count);
     const pct = totalToday ? Math.min(100, Math.round((count/totalToday)*100)) : 0;
     document.getElementById('pillFill').style.width = pct + '%';
