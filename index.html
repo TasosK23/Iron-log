@@ -365,7 +365,7 @@
 
 <script>
 (function(){
-  const APP_VERSION = '2026.08.30.8';
+  const APP_VERSION = '2026.08.30.9';
   const SCHEDULE = [
     {label:'Mon', type:'push'}, {label:'Tue', type:'pull'}, {label:'Wed', type:'legsA'},
     {label:'Thu', type:'push'}, {label:'Fri', type:'pull'}, {label:'Sat', type:'legsB'}, {label:'Sun', type:'rest'},
@@ -1470,7 +1470,12 @@
     const day = SCHEDULE[selectedIndex];
     const title = DAY_TITLE[day.type];
     const isToday = selectedIndex === todayIndex();
-    dayTitleEl.innerHTML = `<h2>${title}</h2>${isToday ? '<span class="today-chip">Today</span>' : ''}`;
+    const todayLabel = (() => {
+      const MONTH_ABBR = ['JAN','FEB','MAR','APR','MAY','JUN','JUL','AUG','SEP','OCT','NOV','DEC'];
+      const now = new Date();
+      return `${MONTH_ABBR[now.getMonth()]} ${now.getDate()}`;
+    })();
+    dayTitleEl.innerHTML = `<h2>${title}</h2>${isToday ? `<span class="today-chip">Today · ${todayLabel}</span>` : ''}`;
     if(day.type === 'rest'){
       dayMetaEl.textContent = '';
     } else {
