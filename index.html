@@ -253,7 +253,8 @@
     </div>
     <div class="cal-section">
       <p class="cal-title">Last 35 Days</p>
-      <div class="cal-grid" id="calGrid"></div>
+      <div class="cal-grid" id="calWeekdays"></div>
+      <div class="cal-grid" id="calGrid" style="margin-top:4px;"></div>
       <div class="cal-legend">
         <span><i class="cal-dot" style="background:var(--success)"></i>Completed</span>
         <span><i class="cal-dot" style="background:var(--surface-2)"></i>Rest day</span>
@@ -355,7 +356,7 @@
 
 <script>
 (function(){
-  const APP_VERSION = '2026.08.30.5';
+  const APP_VERSION = '2026.08.30.6';
   const SCHEDULE = [
     {label:'Mon', type:'push'}, {label:'Tue', type:'pull'}, {label:'Wed', type:'legsA'},
     {label:'Thu', type:'push'}, {label:'Fri', type:'pull'}, {label:'Sat', type:'legsB'}, {label:'Sun', type:'rest'},
@@ -1283,6 +1284,13 @@
     let cells = '';
     const cursor = new Date();
     cursor.setDate(cursor.getDate() - (days - 1));
+
+    const WEEKDAY_ABBR = ['MON','TUE','WED','THU','FRI','SAT','SUN'];
+    const firstDayIdx = jsToScheduleIndex(cursor.getDay());
+    const weekdayHeader = Array.from({length:7}, (_, i) => WEEKDAY_ABBR[(firstDayIdx+i)%7])
+      .map(lbl => `<div style="text-align:center; font-family:'JetBrains Mono',monospace; font-size:8.5px; color:var(--text-muted); letter-spacing:.5px;">${lbl}</div>`).join('');
+    document.getElementById('calWeekdays').innerHTML = weekdayHeader;
+
     for(let i=0; i<days; i++){
       const ds = cursor.toLocaleDateString('en-CA');
       const type = getScheduleTypeForDate(cursor);
