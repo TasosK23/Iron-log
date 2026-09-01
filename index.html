@@ -367,7 +367,7 @@
 
 <script>
 (function(){
-  const APP_VERSION = '2026.08.30.10';
+  const APP_VERSION = '2026.08.30.11';
   const SCHEDULE = [
     {label:'Mon', type:'push'}, {label:'Tue', type:'pull'}, {label:'Wed', type:'legsA'},
     {label:'Thu', type:'push'}, {label:'Fri', type:'pull'}, {label:'Sat', type:'legsB'}, {label:'Sun', type:'rest'},
@@ -1196,12 +1196,15 @@
     if(!rows){
       const startDate = data._meta?.startDate;
       const type = getScheduleTypeForDate(dateObj);
+      const todayD = todayStr();
       if(startDate && dateStr < startDate){
         rows = `<p class="modal-empty">The app wasn't set up yet on this day.</p>`;
-      } else if(dateStr > todayStr()){
-        rows = `<p class="modal-empty">This day hasn't happened yet.</p>`;
       } else if(type === 'rest'){
         rows = `<p class="modal-empty">Scheduled rest day — nothing to log.</p>`;
+      } else if(dateStr > todayD){
+        rows = `<p class="modal-empty">This day hasn't happened yet.</p>`;
+      } else if(dateStr === todayD){
+        rows = `<p class="modal-empty">Today isn't over yet — nothing logged so far.</p>`;
       } else {
         rows = `<p class="modal-empty">You didn't train this day.</p>`;
       }
