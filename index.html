@@ -62,7 +62,8 @@
   .cal-cell.rest{ background:var(--surface-2); color:var(--text-muted); }
   .cal-cell.missed{ background:rgba(255,90,69,.18); border-color:var(--accent); color:var(--accent); }
   .cal-cell.pending{ border-color:var(--gold); color:var(--gold); }
-  .cal-cell.upcoming{ background:var(--surface); border:1px dashed var(--border); color:var(--text-muted); }
+  .cal-cell.upcoming{ background:var(--surface); border:1.5px dashed var(--text-muted); color:var(--text-muted); }
+  .cal-cell.blank{ background:transparent; border:none; }
   .cal-legend{ display:flex; gap:14px; flex-wrap:wrap; margin:10px 0 4px; font-size:10.5px; color:var(--text-muted); }
   .cal-legend span{ display:inline-flex; align-items:center; gap:5px; }
   .cal-dot{ width:9px; height:9px; border-radius:2px; display:inline-block; }
@@ -253,7 +254,7 @@
       <p class="streak-start" id="streakStartLine"></p>
     </div>
     <div class="cal-section">
-      <p class="cal-title">Calendar — 5 Weeks Back, 4 Ahead</p>
+      <p class="cal-title" id="calTitle">Calendar</p>
       <div class="cal-grid" id="calWeekdays"></div>
       <div class="cal-grid" id="calGrid" style="margin-top:4px;"></div>
       <div class="cal-legend">
@@ -261,10 +262,16 @@
         <span><i class="cal-dot" style="background:var(--surface-2)"></i>Rest day</span>
         <span><i class="cal-dot" style="background:rgba(255,90,69,.18); border:1px solid var(--accent);"></i>Missed</span>
         <span><i class="cal-dot" style="background:transparent; border:1px solid var(--gold);"></i>Today</span>
-        <span><i class="cal-dot" style="background:transparent; border:1px dashed var(--text-muted);"></i>Upcoming</span>
+        <span><i class="cal-dot" style="background:transparent; border:1.5px dashed var(--text-muted);"></i>Upcoming</span>
       </div>
     </div>
     <main style="padding-top:6px;">
+      <div class="card vault-card">
+        <span class="card-tag">Archive</span>
+        <div class="card-head"><span class="card-name">🔒 The Vault</span></div>
+        <p class="card-blurb">Search any date — see exactly what you did, or find out if you didn't.</p>
+        <input type="date" id="vaultDateInput" class="bw-input" style="width:100%; margin-top:8px;">
+      </div>
       <div class="card weight-card">
         <span class="card-tag">Lifetime</span>
         <div class="card-head"><span class="card-name">Total Weight Lifted</span></div>
@@ -358,7 +365,7 @@
 
 <script>
 (function(){
-  const APP_VERSION = '2026.08.30.7';
+  const APP_VERSION = '2026.08.30.8';
   const SCHEDULE = [
     {label:'Mon', type:'push'}, {label:'Tue', type:'pull'}, {label:'Wed', type:'legsA'},
     {label:'Thu', type:'push'}, {label:'Fri', type:'pull'}, {label:'Sat', type:'legsB'}, {label:'Sun', type:'rest'},
@@ -1169,7 +1176,7 @@
   function showDayModal(dateStr){
     const log = data[dateStr];
     const dateObj = new Date(dateStr + 'T00:00:00');
-    modalTitleEl.textContent = dateObj.toLocaleDateString(undefined, {weekday:'long', month:'short', day:'numeric'});
+    modalTitleEl.textContent = dateObj.toLocaleDateString(undefined, {weekday:'long', month:'short', day:'numeric', year:'numeric'});
     let rows = '';
     if(log){
       rows = Object.entries(log).map(([exId, sets]) => {
@@ -1184,7 +1191,20 @@
         return `<div class="modal-row"><span>${ex.name}</span><span class="modal-vals">${summary}</span></div>`;
       }).filter(Boolean).join('');
     }
-    modalBodyEl.innerHTML = rows || `<p class="modal-empty">Nothing logged this day.</p>`;
+    if(!rows){
+      const startDate = data._meta?.startDate;
+      const type = getScheduleTypeForDate(dateObj);
+      if(startDate && dateStr < startDate){
+        rows = `<p class="modal-empty">The app wasn't set up yet on this day.</p>`;
+      } else if(dateStr > todayStr()){
+        rows = `<p class="modal-empty">This day hasn't happened yet.</p>`;
+      } else if(type === 'rest'){
+        rows = `<p class="modal-empty">Scheduled rest day — nothing to log.</p>`;
+      } else {
+        rows = `<p class="modal-empty">You didn't train this day.</p>`;
+      }
+    }
+    modalBodyEl.innerHTML = rows;
     dayModal.classList.remove('hidden');
   }
   calGridEl.addEventListener('click', (e) => {
@@ -1193,6 +1213,9 @@
     showDayModal(cell.dataset.date);
   });
   modalCloseEl.addEventListener('click', () => dayModal.classList.add('hidden'));
+  document.getElementById('vaultDateInput').addEventListener('change', (e) => {
+    if(e.target.value) showDayModal(e.target.value);
+  });
 
   const resetModal = document.getElementById('resetModal');
   const resetDayBtn = document.getElementById('resetDayBtn');
@@ -1282,24 +1305,27 @@
     }
     renderPRList();
 
-    const totalDays = 70;
-    const todayDateObj = new Date();
-    const daysSinceMonday = jsToScheduleIndex(todayDateObj.getDay());
-    const thisMonday = new Date(todayDateObj);
-    thisMonday.setDate(todayDateObj.getDate() - daysSinceMonday);
-    const startMonday = new Date(thisMonday);
-    startMonday.setDate(thisMonday.getDate() - 35);
+    const MONTH_NAMES = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+    const now = new Date();
+    const year = now.getFullYear(), month = now.getMonth();
+    document.getElementById('calTitle').textContent = `${MONTH_NAMES[month]} ${year}`;
+
+    const firstOfMonth = new Date(year, month, 1);
+    const daysInMonth = new Date(year, month+1, 0).getDate();
+    const leadingBlanks = jsToScheduleIndex(firstOfMonth.getDay());
 
     const WEEKDAY_ABBR = ['MON','TUE','WED','THU','FRI','SAT','SUN'];
     document.getElementById('calWeekdays').innerHTML = WEEKDAY_ABBR
       .map(lbl => `<div style="text-align:center; font-family:'JetBrains Mono',monospace; font-size:8.5px; color:var(--text-muted); letter-spacing:.5px;">${lbl}</div>`).join('');
 
     let cells = '';
-    const cursor = new Date(startMonday);
+    for(let i=0; i<leadingBlanks; i++){ cells += `<div class="cal-cell blank"></div>`; }
+
     const todayDateStr = todayStr();
-    for(let i=0; i<totalDays; i++){
-      const ds = cursor.toLocaleDateString('en-CA');
-      const type = getScheduleTypeForDate(cursor);
+    for(let d=1; d<=daysInMonth; d++){
+      const dateObj = new Date(year, month, d);
+      const ds = dateObj.toLocaleDateString('en-CA');
+      const type = getScheduleTypeForDate(dateObj);
       const isToday = ds === todayDateStr;
       const isFuture = ds > todayDateStr;
       let cls = 'cal-cell';
@@ -1314,9 +1340,10 @@
       } else {
         cls += ' missed';
       }
-      cells += `<div class="${cls}" data-date="${ds}">${cursor.getDate()}</div>`;
-      cursor.setDate(cursor.getDate() + 1);
+      cells += `<div class="${cls}" data-date="${ds}">${d}</div>`;
     }
+    const trailingBlanks = (7 - ((leadingBlanks + daysInMonth) % 7)) % 7;
+    for(let i=0; i<trailingBlanks; i++){ cells += `<div class="cal-cell blank"></div>`; }
     calGridEl.innerHTML = cells;
 
     weightBigEl.innerHTML = `${currentLifetime.vol.toLocaleString()}<span>kg lifted, all time</span>`;
