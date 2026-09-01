@@ -88,6 +88,8 @@
   .week{ display:flex; gap:6px; overflow-x:auto; padding:14px 20px; border-bottom:1px solid var(--border); scrollbar-width:none; }
   .week::-webkit-scrollbar{ display:none; }
   .day-pill{ flex:none; width:64px; text-align:center; padding:9px 4px 8px; border-radius:10px; background:var(--surface); border:1px solid var(--border); cursor:pointer; transition:background-color .15s ease, border-color .15s ease; }
+  .day-pill .dnum{ font-family:'JetBrains Mono',monospace; font-size:10px; color:var(--gold); display:block; margin-bottom:2px; }
+  .day-pill.selected .dnum{ color:var(--bg); opacity:.75; }
   .day-pill .dname{ font-family:'Oswald',sans-serif; font-weight:600; font-size:13px; letter-spacing:.5px; text-transform:uppercase; color:var(--text); }
   .day-pill .dtype{ font-family:'JetBrains Mono',monospace; font-size:9px; letter-spacing:.2px; text-transform:uppercase; color:var(--text-muted); margin-top:3px; display:block; }
   .day-pill.is-today{ border-color:var(--gold); }
@@ -365,7 +367,7 @@
 
 <script>
 (function(){
-  const APP_VERSION = '2026.08.30.9';
+  const APP_VERSION = '2026.08.30.10';
   const SCHEDULE = [
     {label:'Mon', type:'push'}, {label:'Tue', type:'pull'}, {label:'Wed', type:'legsA'},
     {label:'Thu', type:'push'}, {label:'Fri', type:'pull'}, {label:'Sat', type:'legsB'}, {label:'Sun', type:'rest'},
@@ -1455,11 +1457,16 @@
   }
 
   function renderWeek(){
+    const todayIdx = todayIndex();
     weekEl.innerHTML = SCHEDULE.map((d,i) => {
       const cls = ['day-pill'];
-      if(i===todayIndex()) cls.push('is-today');
+      if(i===todayIdx) cls.push('is-today');
       if(i===selectedIndex) cls.push('selected');
+      const offset = i - todayIdx;
+      const dateObj = new Date();
+      dateObj.setDate(dateObj.getDate() + offset);
       return `<div class="${cls.join(' ')}" data-idx="${i}">
+        <span class="dnum">${dateObj.getDate()}</span>
         <span class="dname">${d.label}</span>
         <span class="dtype">${d.type.replace('legs','leg ')}</span>
       </div>`;
@@ -1470,12 +1477,7 @@
     const day = SCHEDULE[selectedIndex];
     const title = DAY_TITLE[day.type];
     const isToday = selectedIndex === todayIndex();
-    const todayLabel = (() => {
-      const MONTH_ABBR = ['JAN','FEB','MAR','APR','MAY','JUN','JUL','AUG','SEP','OCT','NOV','DEC'];
-      const now = new Date();
-      return `${MONTH_ABBR[now.getMonth()]} ${now.getDate()}`;
-    })();
-    dayTitleEl.innerHTML = `<h2>${title}</h2>${isToday ? `<span class="today-chip">Today · ${todayLabel}</span>` : ''}`;
+    dayTitleEl.innerHTML = `<h2>${title}</h2>${isToday ? '<span class="today-chip">Today</span>' : ''}`;
     if(day.type === 'rest'){
       dayMetaEl.textContent = '';
     } else {
