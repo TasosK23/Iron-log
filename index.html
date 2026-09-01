@@ -62,6 +62,7 @@
   .cal-cell.rest{ background:var(--surface-2); color:var(--text-muted); }
   .cal-cell.missed{ background:rgba(255,90,69,.18); border-color:var(--accent); color:var(--accent); }
   .cal-cell.pending{ border-color:var(--gold); color:var(--gold); }
+  .cal-cell.upcoming{ background:var(--surface); border:1px dashed var(--border); color:var(--text-muted); }
   .cal-legend{ display:flex; gap:14px; flex-wrap:wrap; margin:10px 0 4px; font-size:10.5px; color:var(--text-muted); }
   .cal-legend span{ display:inline-flex; align-items:center; gap:5px; }
   .cal-dot{ width:9px; height:9px; border-radius:2px; display:inline-block; }
@@ -252,7 +253,7 @@
       <p class="streak-start" id="streakStartLine"></p>
     </div>
     <div class="cal-section">
-      <p class="cal-title">Last 35 Days</p>
+      <p class="cal-title">Calendar — 5 Weeks Back, 4 Ahead</p>
       <div class="cal-grid" id="calWeekdays"></div>
       <div class="cal-grid" id="calGrid" style="margin-top:4px;"></div>
       <div class="cal-legend">
@@ -260,6 +261,7 @@
         <span><i class="cal-dot" style="background:var(--surface-2)"></i>Rest day</span>
         <span><i class="cal-dot" style="background:rgba(255,90,69,.18); border:1px solid var(--accent);"></i>Missed</span>
         <span><i class="cal-dot" style="background:transparent; border:1px solid var(--gold);"></i>Today</span>
+        <span><i class="cal-dot" style="background:transparent; border:1px dashed var(--text-muted);"></i>Upcoming</span>
       </div>
     </div>
     <main style="padding-top:6px;">
@@ -356,7 +358,7 @@
 
 <script>
 (function(){
-  const APP_VERSION = '2026.08.30.6';
+  const APP_VERSION = '2026.08.30.7';
   const SCHEDULE = [
     {label:'Mon', type:'push'}, {label:'Tue', type:'pull'}, {label:'Wed', type:'legsA'},
     {label:'Thu', type:'push'}, {label:'Fri', type:'pull'}, {label:'Sat', type:'legsB'}, {label:'Sun', type:'rest'},
@@ -1280,26 +1282,33 @@
     }
     renderPRList();
 
-    const days = 35;
-    let cells = '';
-    const cursor = new Date();
-    cursor.setDate(cursor.getDate() - (days - 1));
+    const totalDays = 70;
+    const todayDateObj = new Date();
+    const daysSinceMonday = jsToScheduleIndex(todayDateObj.getDay());
+    const thisMonday = new Date(todayDateObj);
+    thisMonday.setDate(todayDateObj.getDate() - daysSinceMonday);
+    const startMonday = new Date(thisMonday);
+    startMonday.setDate(thisMonday.getDate() - 35);
 
     const WEEKDAY_ABBR = ['MON','TUE','WED','THU','FRI','SAT','SUN'];
-    const firstDayIdx = jsToScheduleIndex(cursor.getDay());
-    const weekdayHeader = Array.from({length:7}, (_, i) => WEEKDAY_ABBR[(firstDayIdx+i)%7])
+    document.getElementById('calWeekdays').innerHTML = WEEKDAY_ABBR
       .map(lbl => `<div style="text-align:center; font-family:'JetBrains Mono',monospace; font-size:8.5px; color:var(--text-muted); letter-spacing:.5px;">${lbl}</div>`).join('');
-    document.getElementById('calWeekdays').innerHTML = weekdayHeader;
 
-    for(let i=0; i<days; i++){
+    let cells = '';
+    const cursor = new Date(startMonday);
+    const todayDateStr = todayStr();
+    for(let i=0; i<totalDays; i++){
       const ds = cursor.toLocaleDateString('en-CA');
       const type = getScheduleTypeForDate(cursor);
-      const isToday = ds === todayStr();
+      const isToday = ds === todayDateStr;
+      const isFuture = ds > todayDateStr;
       let cls = 'cal-cell';
       if(isToday){
         cls += isDayComplete(ds, type) ? ' done' : ' pending';
       } else if(type === 'rest'){
         cls += ' rest';
+      } else if(isFuture){
+        cls += ' upcoming';
       } else if(isDayComplete(ds, type)){
         cls += ' done';
       } else {
