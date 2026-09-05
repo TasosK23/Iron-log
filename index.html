@@ -140,8 +140,6 @@
   .backup-btn.hidden{ display:none; }
   .backup-btn.confirm{ width:100%; margin-top:8px; border-color:var(--accent); color:var(--accent); }
   .backup-btn:active{ transform:scale(.97); }
-  .backup-area{ width:100%; margin-top:10px; background:var(--surface-2); border:1px solid var(--border); color:var(--text); font-family:'JetBrains Mono',monospace; font-size:10.5px; border-radius:6px; padding:8px; resize:vertical; }
-  .backup-area.hidden{ display:none; }
   .backup-note{ font-size:11.5px; color:var(--success); margin:8px 0 0; min-height:14px; }
   .backup-reminder{ font-size:11.5px; color:var(--gold); margin:8px 0 0; }
 
@@ -311,12 +309,9 @@
         <p class="card-blurb">Your log lives only in this browser/device — not the cloud. Back it up occasionally so you never lose it.</p>
         <p class="backup-reminder" id="backupReminder"></p>
         <div style="display:flex; gap:8px; margin:10px 0 0;">
-          <button class="backup-btn" type="button" id="backupBtn">Show backup code</button>
-          <button class="backup-btn" type="button" id="restoreBtn">Restore from code</button>
+          <button class="backup-btn" type="button" id="exportBtn">📤 Export Backup</button>
+          <button class="backup-btn" type="button" id="importBtn">📥 Import Backup</button>
         </div>
-        <textarea id="backupArea" class="backup-area hidden" placeholder="Paste a backup code here to restore it" rows="4"></textarea>
-        <button class="backup-btn confirm hidden" type="button" id="copyBackupBtn" style="border-color:var(--gold); color:var(--gold);">📋 Copy code</button>
-        <button class="backup-btn confirm hidden" type="button" id="restoreConfirm">Confirm restore (overwrites current log)</button>
         <p class="backup-note" id="backupNote"></p>
       </div>
       <p style="text-align:center; color:var(--text-muted); font-size:10px; margin:16px 0 4px;">Iron Log · v<span id="versionTag"></span></p>
@@ -367,7 +362,7 @@
 
 <script>
 (function(){
-  const APP_VERSION = '2026.08.30.11';
+  const APP_VERSION = '2026.08.30.12';
   const SCHEDULE = [
     {label:'Mon', type:'push'}, {label:'Tue', type:'pull'}, {label:'Wed', type:'legsA'},
     {label:'Thu', type:'push'}, {label:'Fri', type:'pull'}, {label:'Sat', type:'legsB'}, {label:'Sun', type:'rest'},
@@ -580,11 +575,8 @@
   const weightBigEl = document.getElementById('weightBig');
   const weightSetsLineEl = document.getElementById('weightSetsLine');
   const greetingEl = document.getElementById('greeting');
-  const backupBtn = document.getElementById('backupBtn');
-  const restoreBtn = document.getElementById('restoreBtn');
-  const backupArea = document.getElementById('backupArea');
-  const copyBackupBtn = document.getElementById('copyBackupBtn');
-  const restoreConfirm = document.getElementById('restoreConfirm');
+  const exportBtn = document.getElementById('exportBtn');
+  const importBtn = document.getElementById('importBtn');
   const backupNote = document.getElementById('backupNote');
   const backupReminderEl = document.getElementById('backupReminder');
   const restBar = document.getElementById('restBar');
@@ -1545,58 +1537,31 @@
     return '';
   }
 
-  let backupPanelOpen = false;
-  function closeBackupPanel(){
-    backupArea.classList.add('hidden');
-    restoreConfirm.classList.add('hidden');
-    copyBackupBtn.classList.add('hidden');
-    backupNote.textContent = '';
-    backupPanelOpen = false;
-  }
-  backupBtn.addEventListener('click', () => {
-    if(backupPanelOpen && backupBtn.dataset.mode === 'show'){ closeBackupPanel(); return; }
-    backupArea.value = JSON.stringify(data);
-    backupArea.classList.remove('hidden');
-    restoreConfirm.classList.add('hidden');
-    copyBackupBtn.classList.remove('hidden');
-    backupNote.textContent = 'Tap "Copy code" to grab it, or tap the box yourself to select it manually.';
-    backupBtn.dataset.mode = 'show';
-    backupPanelOpen = true;
+  exportBtn.addEventListener('click', async () => {
+    const code = JSON.stringify(data);
     if(!data._meta) data._meta = {bestStreak:0};
     data._meta.lastBackup = Date.now();
     persist();
     backupReminderEl.textContent = backupReminderText();
-  });
-  copyBackupBtn.addEventListener('click', async () => {
     try{
-      await navigator.clipboard.writeText(backupArea.value);
-      backupNote.textContent = '✅ Copied! Paste it somewhere safe, like a Notes app.';
+      await navigator.clipboard.writeText(code);
+      backupNote.textContent = '✅ Copied to clipboard — paste it somewhere safe, like a Notes app.';
     }catch(e){
-      backupArea.focus();
-      backupArea.select();
-      backupNote.textContent = "Couldn't auto-copy — the text is selected, use your keyboard's copy option.";
+      window.prompt('Copy this code (select all, then copy):', code);
     }
   });
-  restoreBtn.addEventListener('click', () => {
-    if(backupPanelOpen && backupBtn.dataset.mode === 'restore'){ closeBackupPanel(); return; }
-    backupArea.value = '';
-    backupArea.placeholder = 'Tap the box, then paste your backup code here';
-    backupArea.classList.remove('hidden');
-    restoreConfirm.classList.remove('hidden');
-    copyBackupBtn.classList.add('hidden');
-    backupNote.textContent = 'Tap "Restore from code" again to cancel.';
-    backupBtn.dataset.mode = 'restore';
-    backupPanelOpen = true;
-  });
-  restoreConfirm.addEventListener('click', () => {
+
+  importBtn.addEventListener('click', () => {
+    const pasted = window.prompt('Paste your backup code here:');
+    if(!pasted) return;
+    if(!window.confirm('This will overwrite your current log. Continue?')) return;
     try{
-      const parsed = JSON.parse(backupArea.value);
+      const parsed = JSON.parse(pasted);
       data = parsed;
       if(!data._meta) data._meta = {bestStreak:0};
       persist();
       renderAll();
       backupNote.textContent = '✅ Restored successfully.';
-      closeBackupPanel();
     }catch(e){
       backupNote.textContent = "⚠️ That code doesn't look valid — check you copied the whole thing.";
     }
