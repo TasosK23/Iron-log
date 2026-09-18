@@ -156,6 +156,8 @@
   .tip-box{ border-left:3px solid var(--gold); padding:7px 10px; margin:0 0 10px; font-size:12px; color:var(--text-muted); background:rgba(255,193,69,.06); }
   .tip-box b{ color:var(--gold); }
   .video-link{ display:inline-flex; align-items:center; gap:6px; background:linear-gradient(135deg, rgba(255,90,69,.15), rgba(255,90,69,.05)); border:1px solid var(--accent); color:var(--accent); font-family:'Inter'; font-size:12px; font-weight:600; padding:7px 12px; border-radius:20px; text-decoration:none; margin:2px 0 4px; }
+  .spotify-btn{ display:block; text-align:center; background:rgba(29,185,84,.14); border:1px solid #1DB954; color:#1DB954; font-family:'Inter'; font-size:13px; font-weight:600; padding:10px; border-radius:20px; text-decoration:none; margin-top:8px; }
+  .spotify-btn:active{ transform:scale(.97); }
   .video-link:active{ transform:scale(.96); }
   .pr-line{ font-size:12.5px; color:var(--gold); margin:0 0 10px; font-family:'JetBrains Mono',monospace; }
   .trend-chart{ background:var(--bg); border:1px solid var(--border); border-radius:6px; padding:8px 6px 4px; margin:0 0 10px; }
@@ -252,6 +254,7 @@
       <p class="streak-formatted" id="streakFormatted"></p>
       <p class="streak-best" id="streakBestLine">Best ever: 0 days</p>
       <p class="streak-start" id="streakStartLine"></p>
+      <p class="streak-start" id="currentStreakStartLine"></p>
     </div>
     <div class="cal-section">
       <p class="cal-title" id="calTitle">Calendar</p>
@@ -292,6 +295,12 @@
 
   <div id="miscPage" class="page hidden">
     <main style="padding-top:20px;">
+      <div class="card">
+        <span class="card-tag">Quick Link</span>
+        <div class="card-head"><span class="card-name">🎵 Music</span></div>
+        <p class="card-blurb">Jump straight to your music before you start lifting.</p>
+        <a href="https://open.spotify.com" target="_blank" rel="noopener" class="spotify-btn">Open Spotify</a>
+      </div>
       <div class="card bw-card">
         <span class="card-tag">Body</span>
         <div class="card-head"><span class="card-name">Bodyweight</span></div>
@@ -362,7 +371,7 @@
 
 <script>
 (function(){
-  const APP_VERSION = '2026.08.30.12';
+  const APP_VERSION = '2026.09.18.1';
   const SCHEDULE = [
     {label:'Mon', type:'push'}, {label:'Tue', type:'pull'}, {label:'Wed', type:'legsA'},
     {label:'Thu', type:'push'}, {label:'Fri', type:'pull'}, {label:'Sat', type:'legsB'}, {label:'Sun', type:'rest'},
@@ -1094,6 +1103,20 @@
     return streak;
   }
 
+  function computeStreakStartDate(){
+    let cursor = new Date();
+    const todayType = getScheduleTypeForDate(cursor);
+    let startDate = null;
+    if(isDayComplete(todayStr(), todayType)) startDate = todayStr();
+    for(let i=1;i<400;i++){
+      cursor.setDate(cursor.getDate()-1);
+      const ds = cursor.toLocaleDateString('en-CA');
+      const type = getScheduleTypeForDate(cursor);
+      if(isDayComplete(ds, type)) startDate = ds; else break;
+    }
+    return startDate;
+  }
+
   function computeLifetimeStats(){
     let sets = 0, vol = 0;
     Object.keys(data).forEach(d => {
@@ -1300,6 +1323,10 @@
     if(data._meta?.startDate){
       streakStartLineEl.textContent = `Started ${formatStartDate(data._meta.startDate)}`;
     }
+    const curStreakStart = computeStreakStartDate();
+    document.getElementById('currentStreakStartLine').textContent = curStreakStart
+      ? `This streak began ${formatStartDate(curStreakStart)}`
+      : '';
     renderPRList();
 
     const MONTH_NAMES = ['January','February','March','April','May','June','July','August','September','October','November','December'];
