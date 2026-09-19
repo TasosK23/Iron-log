@@ -64,6 +64,9 @@
   .cal-cell.pending{ border-color:var(--gold); color:var(--gold); }
   .cal-cell.upcoming{ background:var(--surface); border:1.5px dashed var(--text-muted); color:var(--text-muted); }
   .cal-cell.blank{ background:transparent; border:none; }
+  .cal-cell.reason-sick{ background:rgba(165,127,224,.18); border-color:#A57FE0; color:#A57FE0; }
+  .cal-cell.reason-injured{ background:rgba(92,168,224,.18); border-color:#5CA8E0; color:#5CA8E0; }
+  .cal-cell.reason-notime{ background:rgba(224,162,61,.18); border-color:#E0A23D; color:#E0A23D; }
   .cal-legend{ display:flex; gap:14px; flex-wrap:wrap; margin:10px 0 4px; font-size:10.5px; color:var(--text-muted); }
   .cal-legend span{ display:inline-flex; align-items:center; gap:5px; }
   .cal-dot{ width:9px; height:9px; border-radius:2px; display:inline-block; }
@@ -266,6 +269,9 @@
         <span><i class="cal-dot" style="background:rgba(255,90,69,.18); border:1px solid var(--accent);"></i>Missed</span>
         <span><i class="cal-dot" style="background:transparent; border:1px solid var(--gold);"></i>Today</span>
         <span><i class="cal-dot" style="background:transparent; border:1.5px dashed var(--text-muted);"></i>Upcoming</span>
+        <span><i class="cal-dot" style="background:rgba(165,127,224,.3); border:1px solid #A57FE0;"></i>Sick</span>
+        <span><i class="cal-dot" style="background:rgba(92,168,224,.3); border:1px solid #5CA8E0;"></i>Injured</span>
+        <span><i class="cal-dot" style="background:rgba(224,162,61,.3); border:1px solid #E0A23D;"></i>No Time</span>
       </div>
     </div>
     <main style="padding-top:6px;">
@@ -369,9 +375,20 @@
   </div>
 </div>
 
+<div class="modal-overlay hidden" id="missModal">
+  <div class="modal-card" style="text-align:center;">
+    <h3 style="font-family:'Oswald',sans-serif; font-size:19px; margin:0 0 6px;" id="missModalTitle">You missed a day</h3>
+    <p style="color:var(--text-muted); font-size:12.5px; margin:0 0 16px;">What happened? This just helps you spot patterns over time.</p>
+    <button class="backup-btn confirm" type="button" id="missSickBtn" style="width:100%; margin-bottom:8px; border-color:#A57FE0; color:#A57FE0;">🤒 Sick</button>
+    <button class="backup-btn confirm" type="button" id="missInjuredBtn" style="width:100%; margin-bottom:8px; border-color:#5CA8E0; color:#5CA8E0;">🤕 Injured</button>
+    <button class="backup-btn confirm" type="button" id="missNoTimeBtn" style="width:100%; margin-bottom:8px; border-color:#E0A23D; color:#E0A23D;">⏰ No Time</button>
+    <button type="button" id="missSkipBtn" style="background:none; border:none; color:var(--text-muted); font-size:12px; text-decoration:underline; padding:6px; margin-top:4px;">Skip</button>
+  </div>
+</div>
+
 <script>
 (function(){
-  const APP_VERSION = '2026.09.18.1';
+  const APP_VERSION = '2026.09.18.2';
   const SCHEDULE = [
     {label:'Mon', type:'push'}, {label:'Tue', type:'pull'}, {label:'Wed', type:'legsA'},
     {label:'Thu', type:'push'}, {label:'Fri', type:'pull'}, {label:'Sat', type:'legsB'}, {label:'Sun', type:'rest'},
@@ -1221,7 +1238,11 @@
       } else if(dateStr === todayD){
         rows = `<p class="modal-empty">Today isn't over yet — nothing logged so far.</p>`;
       } else {
-        rows = `<p class="modal-empty">You didn't train this day.</p>`;
+        const reason = data._meta?.missReasons?.[dateStr];
+        const MISS_LABELS = {sick:'🤒 Sick', injured:'🤕 Injured', notime:'⏰ No time'};
+        rows = reason && MISS_LABELS[reason]
+          ? `<p class="modal-empty">You didn't train this day — logged reason: <b style="color:var(--text);">${MISS_LABELS[reason]}</b></p>`
+          : `<p class="modal-empty">You didn't train this day.</p>`;
       }
     }
     modalBodyEl.innerHTML = rows;
@@ -1362,7 +1383,8 @@
       } else if(isDayComplete(ds, type)){
         cls += ' done';
       } else {
-        cls += ' missed';
+        const reason = data._meta?.missReasons?.[ds];
+        cls += (reason && reason !== 'skipped') ? ` reason-${reason}` : ' missed';
       }
       cells += `<div class="${cls}" data-date="${ds}">${d}</div>`;
     }
@@ -1766,6 +1788,60 @@
   }
   document.getElementById('updateReload').addEventListener('click', () => location.reload());
 
+  function findUnansweredMissedDay(){
+    if(!data._meta) data._meta = {bestStreak:0};
+    if(!data._meta.missReasons) data._meta.missReasons = {};
+    const startDate = data._meta.startDate;
+    let cursor = new Date();
+    cursor.setDate(cursor.getDate() - 1);
+    for(let i=0; i<30; i++){
+      const ds = cursor.toLocaleDateString('en-CA');
+      if(startDate && ds < startDate) break;
+      const type = getScheduleTypeForDate(cursor);
+      if(type !== 'rest' && !isDayComplete(ds, type) && !data._meta.missReasons[ds]){
+        return ds;
+      }
+      cursor.setDate(cursor.getDate() - 1);
+    }
+    return null;
+  }
+
+  function checkForMissedDayPrompt(){
+    const ds = findUnansweredMissedDay();
+    if(!ds) return;
+    const dateObj = new Date(ds + 'T00:00:00');
+    document.getElementById('missModalTitle').textContent =
+      `You missed ${dateObj.toLocaleDateString(undefined, {weekday:'long', month:'short', day:'numeric'})}`;
+    const modal = document.getElementById('missModal');
+    modal.dataset.date = ds;
+    modal.classList.remove('hidden');
+  }
+
+  function saveMissReason(reason){
+    const modal = document.getElementById('missModal');
+    const ds = modal.dataset.date;
+    if(!ds) return;
+    if(!data._meta.missReasons) data._meta.missReasons = {};
+    data._meta.missReasons[ds] = reason;
+    persist();
+    modal.classList.add('hidden');
+    renderAll();
+    setTimeout(checkForMissedDayPrompt, 400);
+  }
+  document.getElementById('missSickBtn').addEventListener('click', () => saveMissReason('sick'));
+  document.getElementById('missInjuredBtn').addEventListener('click', () => saveMissReason('injured'));
+  document.getElementById('missNoTimeBtn').addEventListener('click', () => saveMissReason('notime'));
+  document.getElementById('missSkipBtn').addEventListener('click', () => {
+    const modal = document.getElementById('missModal');
+    const ds = modal.dataset.date;
+    if(ds){
+      if(!data._meta.missReasons) data._meta.missReasons = {};
+      data._meta.missReasons[ds] = 'skipped';
+      persist();
+    }
+    modal.classList.add('hidden');
+  });
+
   async function init(){
     try{
       const res = await storageGet(STORAGE_KEY);
@@ -1778,6 +1854,7 @@
     }
     document.getElementById('versionTag').textContent = APP_VERSION;
     renderAll();
+    checkForMissedDayPrompt();
     checkForUpdate();
     setInterval(checkForUpdate, 3*60*1000);
 
@@ -1788,6 +1865,7 @@
         lastKnownDate = nowStr;
         selectedIndex = todayIndex();
         renderAll();
+        checkForMissedDayPrompt();
       }
     }
     document.addEventListener('visibilitychange', () => {
