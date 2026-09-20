@@ -388,7 +388,7 @@
 
 <script>
 (function(){
-  const APP_VERSION = '2026.09.18.2';
+  const APP_VERSION = '2026.09.18.3';
   const SCHEDULE = [
     {label:'Mon', type:'push'}, {label:'Tue', type:'pull'}, {label:'Wed', type:'legsA'},
     {label:'Thu', type:'push'}, {label:'Fri', type:'pull'}, {label:'Sat', type:'legsB'}, {label:'Sun', type:'rest'},
@@ -1792,16 +1792,13 @@
     if(!data._meta) data._meta = {bestStreak:0};
     if(!data._meta.missReasons) data._meta.missReasons = {};
     const startDate = data._meta.startDate;
-    let cursor = new Date();
+    const cursor = new Date();
     cursor.setDate(cursor.getDate() - 1);
-    for(let i=0; i<30; i++){
-      const ds = cursor.toLocaleDateString('en-CA');
-      if(startDate && ds < startDate) break;
-      const type = getScheduleTypeForDate(cursor);
-      if(type !== 'rest' && !isDayComplete(ds, type) && !data._meta.missReasons[ds]){
-        return ds;
-      }
-      cursor.setDate(cursor.getDate() - 1);
+    const ds = cursor.toLocaleDateString('en-CA');
+    if(startDate && ds < startDate) return null;
+    const type = getScheduleTypeForDate(cursor);
+    if(type !== 'rest' && !isDayComplete(ds, type) && !data._meta.missReasons[ds]){
+      return ds;
     }
     return null;
   }
@@ -1826,7 +1823,6 @@
     persist();
     modal.classList.add('hidden');
     renderAll();
-    setTimeout(checkForMissedDayPrompt, 400);
   }
   document.getElementById('missSickBtn').addEventListener('click', () => saveMissReason('sick'));
   document.getElementById('missInjuredBtn').addEventListener('click', () => saveMissReason('injured'));
