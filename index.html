@@ -388,7 +388,7 @@
 
 <script>
 (function(){
-  const APP_VERSION = '2026.09.18.3';
+  const APP_VERSION = '2026.09.18.4';
   const SCHEDULE = [
     {label:'Mon', type:'push'}, {label:'Tue', type:'pull'}, {label:'Wed', type:'legsA'},
     {label:'Thu', type:'push'}, {label:'Fri', type:'pull'}, {label:'Sat', type:'legsB'}, {label:'Sun', type:'rest'},
@@ -1080,13 +1080,18 @@
   }
 
   function computeWeeklyCompletion(){
+    const now = new Date();
+    const daysSinceMonday = jsToScheduleIndex(now.getDay());
+    const monday = new Date(now);
+    monday.setDate(now.getDate() - daysSinceMonday);
     let count = 0;
-    for(let i=0;i<7;i++){
-      const d = new Date();
-      d.setDate(d.getDate()-i);
+    for(let i=0; i<7; i++){
+      const d = new Date(monday);
+      d.setDate(monday.getDate() + i);
+      if(d > now) break;
       const ds = d.toLocaleDateString('en-CA');
-      const log = data[ds];
-      if(log && Object.values(log).some(sets => sets.some(s => s.done))) count++;
+      const type = getScheduleTypeForDate(d);
+      if(isDayComplete(ds, type)) count++;
     }
     return count;
   }
