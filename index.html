@@ -388,7 +388,7 @@
 
 <script>
 (function(){
-  const APP_VERSION = '2026.09.18.4';
+  const APP_VERSION = '2026.09.18.5';
   const SCHEDULE = [
     {label:'Mon', type:'push'}, {label:'Tue', type:'pull'}, {label:'Wed', type:'legsA'},
     {label:'Thu', type:'push'}, {label:'Fri', type:'pull'}, {label:'Sat', type:'legsB'}, {label:'Sun', type:'rest'},
@@ -542,16 +542,16 @@
       muscle:'Hamstrings, glutes, lower back',
       how:['Dumbbells in front of your thighs, a slight knee bend held constant.','Hinge at the hips, pushing them back as the weights slide down your legs.','Stop at a deep hamstring stretch, then drive your hips forward to stand.'],
       tip:"This is a hip hinge, not a squat — your knees barely bend throughout."},
-    {id:'db_leg_curl', day:['legsA','legsB'], tag:'Legs', name:'Prone DB Leg Curl', sets:3, rest:60, badge:'3×10–12', type:'weight', targets:[10,10,'F'],
-      blurb:"The RDL trains hamstrings through hip extension — this trains the other half of what hamstrings actually do, knee flexion. Research confirms one movement genuinely doesn't replace the other.",
+    {id:'single_leg_curl', day:['legsA','legsB'], tag:'Legs', name:'Single-Leg Prone DB Leg Curl', sets:3, rest:60, badge:'3×10–12/leg', type:'weight', targets:[10,10,'F'],
+      blurb:"Swapped from the two-feet version since pinching a dumbbell between both feet was genuinely unstable — resting it behind one ankle at a time is far more secure, same hamstring knee-flexion function.",
       muscle:'Hamstrings (knee flexion emphasis)',
-      how:['Lie face down, gripping a dumbbell firmly between your feet or ankles.','Keeping your hips pressed into the floor, curl your heels up toward your glutes by bending your knees.','Lower back down slowly under control — this is the whole set, so don\'t let the dumbbell slip.'],
-      tip:'Move slowly. This setup is precarious at first — a lighter weight with strict control beats a heavier one that drops halfway through the set.'},
-    {id:'bulgarian_split_squat', day:['legsB'], tag:'Legs', name:'Bulgarian Split Squat', sets:3, rest:90, badge:'3×8–12/leg', type:'weight', targets:[10,10,'F'],
-      blurb:'The single-leg complement to your goblet squat — adds variety and corrects side-to-side imbalances.',
-      muscle:'Quads, glutes, hamstrings (unilateral)',
-      how:['Rest the top of one foot behind you on a sturdy chair, low step, or stack of books.','Lower straight down until your front thigh is roughly parallel to the floor.','Drive through your front heel to stand, keeping most of your weight on the front leg.'],
-      tip:'Keep the rear foot lower rather than higher — an overly high surface hurts your balance more than it helps.'},
+      how:['Lie face down, resting a dumbbell behind one ankle so it sits against your heel/Achilles, foot flexed to hold it in place.','Keeping your hips pressed into the floor, curl that heel up toward your glute.','Lower back down slowly, complete all reps on one side, then switch legs.'],
+      tip:'Flexing your foot — toes pulled up toward your shin — is what locks the dumbbell in place. Pointed toes let it slide right off.'},
+    {id:'reverse_lunge', day:['legsB'], tag:'Legs', name:'Reverse Lunge', sets:3, rest:90, badge:'3×8–12/leg', type:'weight', targets:[10,10,'F'],
+      blurb:"Swapped in for Bulgarian Split Squat since that needs an elevated surface for your rear foot — this trains the same unilateral quad/glute pattern with just floor space.",
+      muscle:'Quads, glutes (unilateral)',
+      how:['Stand tall holding a dumbbell in each hand.','Step one leg backward into a lunge, lowering your rear knee toward the floor.','Push through your front heel to return to standing, then repeat on the other side.'],
+      tip:'Keep most of your weight on the front leg — the back leg is there for balance, not for pushing you back up.'},
     {id:'bird_dog', day:['legsA','legsB'], tag:'Lower Back', name:'Bird Dog', sets:3, rest:45, badge:'3×10–12/side', type:'bodyweight', targets:[10,10,10],
       blurb:'Swapped in for the Superman hold after rechecking the research — it trains the same lower-back stabilizers with far less spinal compression.',
       muscle:'Erector spinae, deep core (transverse abdominis), glutes, shoulder stabilizers',
@@ -1734,14 +1734,19 @@
       const card = document.querySelector(`.card[data-card="${exId}"]`);
       card.classList.toggle('stamped', sets.every(s => s.done));
       persist();
-      if(sets[idx].done){ primeAudio(); startRest(ex.rest); markSessionStarted(); }
+      const dayJustCompleted = !wasComplete && isDayComplete(todayStr(), day.type);
+      if(sets[idx].done){
+        primeAudio();
+        markSessionStarted();
+        if(!dayJustCompleted) startRest(ex.rest);
+      }
       renderAll();
       const newPR = computePR(exId, ex);
       const gotPR = sets[idx].done && newPR && newPR !== oldPR;
-      const dayJustCompleted = !wasComplete && isDayComplete(todayStr(), day.type);
       if(gotPR){
         showToast(`🏆 New PR — ${ex.name}: ${newPR}`);
-      }else if(dayJustCompleted){
+      }
+      if(dayJustCompleted){
         showSessionComplete(day.type);
       }
     }
