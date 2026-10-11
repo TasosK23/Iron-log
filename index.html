@@ -388,7 +388,7 @@
 
 <script>
 (function(){
-  const APP_VERSION = '2026.09.18.7';
+  const APP_VERSION = '2026.10.11.1';
   const SCHEDULE = [
     {label:'Mon', type:'push'}, {label:'Tue', type:'pull'}, {label:'Wed', type:'legsA'},
     {label:'Thu', type:'push'}, {label:'Fri', type:'pull'}, {label:'Sat', type:'legsB'}, {label:'Sun', type:'rest'},
@@ -475,6 +475,11 @@
       muscle:'Rear deltoids, rhomboids, mid-traps',
       how:['Hinge forward at the hips to about 45–90°, flat back, dumbbells hanging straight down.','Raise your arms out to the sides, leading with your elbows, squeezing your shoulder blades together at the top.','Lower slowly back to the start under control.'],
       tip:'Use lighter weight than you think — heavy loads let your traps and lower back take over instead of your rear delts.'},
+    {id:'lat_raise_pull', day:['pull'], tag:'Shoulders', name:'Standing DB Lateral Raise', sets:3, rest:60, badge:'3×12–15', type:'weight', targets:[12,12,'F'], since:{pull:'2026-10-11'},
+      blurb:"Side delts were only getting 6 direct sets a week from Push days. This doubles it, and side delts are what make shoulders look wider. Both arms at once to keep Pull day short.",
+      muscle:'Side delts',
+      how:['Stand tall with a light dumbbell in each hand at your sides, elbows slightly bent.','Raise both arms out to the sides until they reach shoulder height.','Lower slowly under control instead of letting the dumbbells drop.'],
+      tip:'Lead with your elbows and stop at shoulder height. If you have to swing your body to get the weights up, they are too heavy.'},
     {id:'shrug', day:['pull'], tag:'Traps', name:'Dumbbell Shrug', sets:3, rest:45, badge:'3×8–12', type:'weight', targets:[10,10,'F'],
       blurb:'A simple, direct isolation move — EMG research shows shrugs hit the upper traps harder than almost anything else you can do with dumbbells.',
       muscle:'Upper trapezius',
@@ -506,7 +511,7 @@
       how:['Lie face down on the mattress or floor, arms extended forward at roughly 45° from your body to form a Y, thumbs pointing up.','Keeping your arms straight, lift them a few inches off the floor, leading with your thumbs.','Squeeze your shoulder blades down and together at the top, hold briefly, then lower under control.'],
       tip:"This is a small, controlled movement, not a big one. If your neck or upper traps are doing the work instead of your upper back, the range is too big."},
 
-    {id:'goblet_squat', day:['legsA'], tag:'Legs', name:'Goblet Squat', sets:4, rest:120, badge:'4×8–12', type:'weight', targets:[10,10,10,'F'],
+    {id:'goblet_squat', day:['legsA','legsB'], tag:'Legs', name:'Goblet Squat', sets:4, rest:120, badge:'4×8–12', type:'weight', targets:[10,10,10,'F'], since:{legsB:'2026-10-11'},
       blurb:'The most knee- and back-friendly way to load a squat pattern with one dumbbell — the main strength lift of the day.',
       muscle:'Quads, glutes, core',
       how:['Hold one dumbbell vertically against your chest.','Squat down between your knees, keeping your torso upright.','Drive through your whole foot back to standing.'],
@@ -1100,9 +1105,17 @@
     return SCHEDULE[jsToScheduleIndex(d.getDay())].type;
   }
 
+  function activeOn(ex, dayType, dateStr){
+    const since = ex.since && ex.since[dayType];
+    return !since || dateStr >= since;
+  }
+  function exercisesFor(dayType, dateStr){
+    return EXERCISES.filter(e => e.day.includes(dayType) && activeOn(e, dayType, dateStr));
+  }
+
   function isDayComplete(dateStr, dayType){
     if(dayType === 'rest') return true;
-    const list = EXERCISES.filter(e => e.day.includes(dayType));
+    const list = exercisesFor(dayType, dateStr);
     const log = data[dateStr];
     if(!log) return false;
     return list.every(ex => {
@@ -1530,7 +1543,7 @@
     if(day.type === 'rest'){
       dayMetaEl.textContent = '';
     } else {
-      const list = EXERCISES.filter(e => e.day.includes(day.type));
+      const list = exercisesFor(day.type, getSelectedDateStr());
       const totalSets = list.reduce((sum,e) => sum + e.sets, 0);
       const liftMin = estimateLiftMinutes(list);
       dayMetaEl.textContent = `${list.length} exercises · ${totalSets} sets · ~${liftMin} min lifting + 10 min warm-up/stretch ≈ ${liftMin+10} min total`;
@@ -1559,7 +1572,7 @@
       html += `<div class="rest-card"><h3>Rest up</h3><p>${msg}</p></div>`;
     } else {
       const locked = selectedIndex !== todayIndex();
-      const list = EXERCISES.filter(e => e.day.includes(day.type));
+      const list = exercisesFor(day.type, getSelectedDateStr());
       const fillBtn = (!locked && hasAnyHistory(day.type))
         ? `<button class="fill-all-btn" type="button" data-action="fillall" data-day="${day.type}">↻ Fill all weights from last time</button>`
         : '';
