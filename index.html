@@ -388,7 +388,7 @@
 
 <script>
 (function(){
-  const APP_VERSION = '2026.10.11.1';
+  const APP_VERSION = '2026.10.29.1';
   const SCHEDULE = [
     {label:'Mon', type:'push'}, {label:'Tue', type:'pull'}, {label:'Wed', type:'legsA'},
     {label:'Thu', type:'push'}, {label:'Fri', type:'pull'}, {label:'Sat', type:'legsB'}, {label:'Sun', type:'rest'},
@@ -1038,7 +1038,8 @@
         if(!s.done) return;
         if(ex.type==='weight'){
           const w = Number(s.weight)||0, r = Number(s.reps)||0;
-          if(!best || w>best.weight || (w===best.weight && r>best.reps)) best={weight:w, reps:r};
+          const v = Math.round(w*r*100)/100;
+          if(!best || v>best.vol || (v===best.vol && (w>best.weight || (w===best.weight && r>best.reps)))) best={weight:w, reps:r, vol:v};
         } else if(ex.type==='bodyweight'){
           const r = Number(s.reps)||0;
           if(best==null || r>best) best=r;
