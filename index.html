@@ -62,6 +62,7 @@
   .cal-cell.rest{ background:var(--surface-2); color:var(--text-muted); }
   .cal-cell.missed{ background:rgba(255,90,69,.18); border-color:var(--accent); color:var(--accent); }
   .cal-cell.pending{ border-color:var(--gold); color:var(--gold); }
+  .cal-cell.grace{ background:rgba(255,193,69,.08); border:1.5px dashed var(--gold); color:var(--gold); }
   .cal-cell.upcoming{ background:var(--surface); border:1.5px dashed var(--text-muted); color:var(--text-muted); }
   .cal-cell.blank{ background:transparent; border:none; }
   .cal-cell.reason-sick{ background:rgba(165,127,224,.18); border-color:#A57FE0; color:#A57FE0; }
@@ -96,6 +97,11 @@
   .day-pill .dname{ font-family:'Oswald',sans-serif; font-weight:600; font-size:13px; letter-spacing:.5px; text-transform:uppercase; color:var(--text); }
   .day-pill .dtype{ font-family:'JetBrains Mono',monospace; font-size:9px; letter-spacing:.2px; text-transform:uppercase; color:var(--text-muted); margin-top:3px; display:block; }
   .day-pill.is-today{ border-color:var(--gold); }
+  .day-pill.is-catchup{ border:1.5px dashed var(--gold); }
+  .today-chip.catchup-chip{ background:transparent; color:var(--gold); border:1px dashed var(--gold); }
+  .preview-banner.catchup{ border-color:var(--gold); color:var(--text); }
+  .catchup-banner{ margin:0 0 14px; padding:10px 12px; background:rgba(255,193,69,.08); border:1px solid var(--gold); border-radius:8px; font-size:12.5px; color:var(--text); display:flex; align-items:center; justify-content:space-between; gap:10px; }
+  .catchup-banner button{ background:var(--gold); border:none; color:var(--bg); font-family:'Inter'; font-size:12px; font-weight:600; padding:7px 11px; border-radius:6px; cursor:pointer; flex:none; }
   .day-pill.selected{ background:linear-gradient(135deg, var(--gold), var(--accent)); box-shadow:0 2px 14px rgba(255,90,69,.3); border-color:transparent; }
   .day-pill.selected .dname, .day-pill.selected .dtype{ color:var(--bg); }
   .day-pill:active{ transform:scale(.96); }
@@ -268,6 +274,7 @@
         <span><i class="cal-dot" style="background:var(--surface-2)"></i>Rest day</span>
         <span><i class="cal-dot" style="background:rgba(255,90,69,.18); border:1px solid var(--accent);"></i>Missed</span>
         <span><i class="cal-dot" style="background:transparent; border:1px solid var(--gold);"></i>Today</span>
+        <span><i class="cal-dot" style="background:transparent; border:1.5px dashed var(--gold);"></i>Catch-up</span>
         <span><i class="cal-dot" style="background:transparent; border:1.5px dashed var(--text-muted);"></i>Upcoming</span>
         <span><i class="cal-dot" style="background:rgba(165,127,224,.3); border:1px solid #A57FE0;"></i>Sick</span>
         <span><i class="cal-dot" style="background:rgba(92,168,224,.3); border:1px solid #5CA8E0;"></i>Injured</span>
@@ -388,7 +395,7 @@
 
 <script>
 (function(){
-  const APP_VERSION = '2026.10.29.1';
+  const APP_VERSION = '2026.10.29.2';
   const SCHEDULE = [
     {label:'Mon', type:'push'}, {label:'Tue', type:'pull'}, {label:'Wed', type:'legsA'},
     {label:'Thu', type:'push'}, {label:'Fri', type:'pull'}, {label:'Sat', type:'legsB'}, {label:'Sun', type:'rest'},
@@ -714,13 +721,38 @@
     return {seconds:'', done:false};
   }
 
-  function ensureToday(exId, ex){
-    if(!data[todayStr()]) data[todayStr()] = {};
-    if(!data[todayStr()][exId]){
-      data[todayStr()][exId] = Array.from({length: ex.sets}, () => emptySet(ex.type));
+  function ensureDate(ds, exId, ex){
+    if(!data[ds]) data[ds] = {};
+    if(!data[ds][exId]){
+      data[ds][exId] = Array.from({length: ex.sets}, () => emptySet(ex.type));
     }
-    return data[todayStr()][exId];
+    return data[ds][exId];
   }
+  function ensureToday(exId, ex){ return ensureDate(todayStr(), exId, ex); }
+
+  // ---- Grace day: a training day's workout can be done on its day or the next day ----
+  function yesterdayStr(){
+    const d = new Date();
+    d.setDate(d.getDate() - 1);
+    return d.toLocaleDateString('en-CA');
+  }
+  function isOpenDay(ds, type){
+    if(type === 'rest') return false;
+    return ds === todayStr() || ds === yesterdayStr();
+  }
+  function catchUpAvailable(){
+    const todayIdx = todayIndex();
+    if(todayIdx === 0) return false;
+    const type = SCHEDULE[todayIdx - 1].type;
+    if(type === 'rest') return false;
+    const ds = yesterdayStr();
+    const start = data._meta?.startDate;
+    if(start && ds < start) return false;
+    return !isDayComplete(ds, type) || data._meta?.catchUp?.[ds] === todayStr();
+  }
+  function isCatchUpIndex(idx){ return idx === todayIndex() - 1 && catchUpAvailable(); }
+  function canLogIndex(idx){ return idx === todayIndex() || isCatchUpIndex(idx); }
+  function logDate(){ return getSelectedDateStr(); }
 
   function getBodyweightPoints(){
     const log = data._meta?.bodyweightLog || {};
@@ -925,7 +957,7 @@
   }
 
   function getDisplaySets(exId, ex, locked){
-    if(!locked) return ensureToday(exId, ex);
+    if(!locked) return ensureDate(getSelectedDateStr(), exId, ex);
     const selDate = getSelectedDateStr();
     const log = (data[selDate] || {})[exId];
     const result = [];
@@ -962,7 +994,8 @@
   }
 
   function lastSessionSets(exId){
-    const dates = Object.keys(data).filter(d => d !== todayStr() && d !== '_meta').sort().reverse();
+    const cutoff = isCatchUpIndex(selectedIndex) ? getSelectedDateStr() : todayStr();
+    const dates = Object.keys(data).filter(d => d !== '_meta' && d < cutoff).sort().reverse();
     for(const d of dates){
       const sets = data[d][exId];
       if(!sets) continue;
@@ -983,7 +1016,7 @@
     list.forEach(ex => {
       const last = lastSessionSets(ex.id);
       if(!last) return;
-      const sets = ensureToday(ex.id, ex);
+      const sets = ensureDate(logDate(), ex.id, ex);
       sets.forEach((s,i) => {
         const src = last[i] || last[last.length-1];
         s.weight = src.weight;
@@ -1073,9 +1106,10 @@
     return best > 0 ? Math.round(best*10)/10 : null;
   }
 
-  function computeTodayVolume(){
+  function computeTodayVolume(){ return computeVolumeFor(todayStr()); }
+  function computeVolumeFor(ds){
     let vol = 0;
-    const todayLog = data[todayStr()] || {};
+    const todayLog = data[ds] || {};
     Object.entries(todayLog).forEach(([exId, sets]) => {
       const ex = EXERCISES.find(x => x.id === exId);
       if(ex && ex.type === 'weight'){
@@ -1125,30 +1159,30 @@
     });
   }
 
+  // A finished day adds to the streak. An unfinished day that's still open
+  // (today, or yesterday during its extra day) is skipped without breaking it.
   function computeStreak(){
     let streak = 0;
-    let cursor = new Date();
-    const todayType = getScheduleTypeForDate(cursor);
-    if(isDayComplete(todayStr(), todayType)) streak++;
-    for(let i=1;i<400;i++){
-      cursor.setDate(cursor.getDate()-1);
+    const cursor = new Date();
+    for(let i=0; i<400; i++){
       const ds = cursor.toLocaleDateString('en-CA');
       const type = getScheduleTypeForDate(cursor);
-      if(isDayComplete(ds, type)) streak++; else break;
+      if(isDayComplete(ds, type)) streak++;
+      else if(!isOpenDay(ds, type)) break;
+      cursor.setDate(cursor.getDate()-1);
     }
     return streak;
   }
 
   function computeStreakStartDate(){
-    let cursor = new Date();
-    const todayType = getScheduleTypeForDate(cursor);
     let startDate = null;
-    if(isDayComplete(todayStr(), todayType)) startDate = todayStr();
-    for(let i=1;i<400;i++){
-      cursor.setDate(cursor.getDate()-1);
+    const cursor = new Date();
+    for(let i=0; i<400; i++){
       const ds = cursor.toLocaleDateString('en-CA');
       const type = getScheduleTypeForDate(cursor);
-      if(isDayComplete(ds, type)) startDate = ds; else break;
+      if(isDayComplete(ds, type)) startDate = ds;
+      else if(!isOpenDay(ds, type)) break;
+      cursor.setDate(cursor.getDate()-1);
     }
     return startDate;
   }
@@ -1182,19 +1216,23 @@
   }
 
   function updateStats(){
+    const catchingUp = isCatchUpIndex(selectedIndex);
+    const statDate = catchingUp ? yesterdayStr() : todayStr();
+    const day = SCHEDULE[catchingUp ? selectedIndex : todayIndex()];
     let count = 0;
-    const todayLog = data[todayStr()] || {};
-    Object.values(todayLog).forEach(sets => sets.forEach(s => { if(s.done) count++; }));
-    const day = SCHEDULE[todayIndex()];
+    const statLog = data[statDate] || {};
+    Object.values(statLog).forEach(sets => sets.forEach(s => { if(s.done) count++; }));
     const isRest = day.type === 'rest';
     document.getElementById('setsTodayRow').classList.toggle('hidden', isRest);
     document.getElementById('pillTrack').classList.toggle('hidden', isRest);
     document.getElementById('volTodayRow').classList.toggle('hidden', isRest);
-    const totalToday = isRest ? 0 : EXERCISES.filter(e => e.day.includes(day.type)).reduce((sum,e) => sum + e.sets, 0);
+    document.querySelector('#setsTodayRow .stat-label').textContent = catchingUp ? 'Sets (catch-up)' : 'Sets today';
+    document.querySelector('#volTodayRow .stat-label').textContent = catchingUp ? 'Volume (catch-up)' : 'Volume today';
+    const totalToday = isRest ? 0 : exercisesFor(day.type, statDate).reduce((sum,e) => sum + e.sets, 0);
     tallyCountEl.textContent = totalToday ? `${count}/${totalToday}` : String(count);
     const pct = totalToday ? Math.min(100, Math.round((count/totalToday)*100)) : 0;
     document.getElementById('pillFill').style.width = pct + '%';
-    volCountEl.textContent = `${computeTodayVolume()} kg`;
+    volCountEl.textContent = `${computeVolumeFor(statDate)} kg`;
     weekCountEl.textContent = `${computeWeeklyCompletion()}/6 days`;
     streakChip.textContent = `🔥 ${currentStreak}`;
   }
@@ -1205,20 +1243,28 @@
     return h > 0 ? `${h}h ${m}m` : `${m} min`;
   }
 
-  function markSessionStarted(){
+  function markSessionStarted(ds){
+    ds = ds || todayStr();
     if(!data._meta) data._meta = {bestStreak:0};
     if(!data._meta.sessionStarts) data._meta.sessionStarts = {};
-    if(!data._meta.sessionStarts[todayStr()]) data._meta.sessionStarts[todayStr()] = Date.now();
+    const existing = data._meta.sessionStarts[ds];
+    if(!existing || new Date(existing).toLocaleDateString('en-CA') !== todayStr()){
+      data._meta.sessionStarts[ds] = Date.now();
+    }
   }
 
-  function showSessionComplete(dayType){
-    const startedAt = data._meta?.sessionStarts?.[todayStr()];
+  function showSessionComplete(dayType, ds){
+    ds = ds || todayStr();
+    const caughtUp = ds !== todayStr();
+    const startedAt = data._meta?.sessionStarts?.[ds];
     const elapsed = startedAt ? Date.now() - startedAt : null;
-    const list = EXERCISES.filter(e => e.day.includes(dayType));
+    const list = exercisesFor(dayType, ds);
     const totalSets = list.reduce((s,e) => s + e.sets, 0);
-    document.getElementById('sessionSubtitle').textContent = `${DAY_TITLE[dayType]} — fully logged. Next up: ${getTomorrowLabel()}.`;
+    document.getElementById('sessionSubtitle').textContent = caughtUp
+      ? `${DAY_TITLE[dayType]} — caught up a day late. Your streak is safe.`
+      : `${DAY_TITLE[dayType]} — fully logged. Next up: ${getTomorrowLabel()}.`;
     document.getElementById('sessionSets').textContent = `${totalSets}/${totalSets}`;
-    document.getElementById('sessionVolume').textContent = `${computeTodayVolume()} kg`;
+    document.getElementById('sessionVolume').textContent = `${computeVolumeFor(ds)} kg`;
     document.getElementById('sessionTime').textContent = elapsed ? formatElapsed(elapsed) : '—';
     document.getElementById('sessionStreak').textContent = `${currentStreak} day${currentStreak!==1?'s':''}`;
     document.getElementById('sessionModal').classList.remove('hidden');
@@ -1256,6 +1302,8 @@
         rows = `<p class="modal-empty">This day hasn't happened yet.</p>`;
       } else if(dateStr === todayD){
         rows = `<p class="modal-empty">Today isn't over yet — nothing logged so far.</p>`;
+      } else if(isOpenDay(dateStr, type)){
+        rows = `<p class="modal-empty">Not done yet — you can still catch up on it today.</p>`;
       } else {
         const reason = data._meta?.missReasons?.[dateStr];
         const MISS_LABELS = {sick:'🤒 Sick', injured:'🤕 Injured', notime:'⏰ No time'};
@@ -1263,6 +1311,11 @@
           ? `<p class="modal-empty">You didn't train this day — logged reason: <b style="color:var(--text);">${MISS_LABELS[reason]}</b></p>`
           : `<p class="modal-empty">You didn't train this day.</p>`;
       }
+    }
+    const caughtUpOn = data._meta?.catchUp?.[dateStr];
+    if(caughtUpOn && log && Object.values(log).some(sets => sets.some(s => s.done))){
+      const onLabel = new Date(caughtUpOn + 'T00:00:00').toLocaleDateString(undefined, {weekday:'short', day:'numeric', month:'short'});
+      rows += `<p class="modal-empty">Finished a day late, on ${onLabel}.</p>`;
     }
     modalBodyEl.innerHTML = rows;
     dayModal.classList.remove('hidden');
@@ -1401,6 +1454,8 @@
         cls += ' upcoming';
       } else if(isDayComplete(ds, type)){
         cls += ' done';
+      } else if(isOpenDay(ds, type)){
+        cls += ' grace';
       } else {
         const reason = data._meta?.missReasons?.[ds];
         cls += (reason && reason !== 'skipped') ? ` reason-${reason}` : ' missed';
@@ -1524,6 +1579,7 @@
     weekEl.innerHTML = SCHEDULE.map((d,i) => {
       const cls = ['day-pill'];
       if(i===todayIdx) cls.push('is-today');
+      if(isCatchUpIndex(i)) cls.push('is-catchup');
       if(i===selectedIndex) cls.push('selected');
       const offset = i - todayIdx;
       const dateObj = new Date();
@@ -1540,7 +1596,9 @@
     const day = SCHEDULE[selectedIndex];
     const title = DAY_TITLE[day.type];
     const isToday = selectedIndex === todayIndex();
-    dayTitleEl.innerHTML = `<h2>${title}</h2>${isToday ? '<span class="today-chip">Today</span>' : ''}`;
+    const chip = isToday ? '<span class="today-chip">Today</span>'
+      : (isCatchUpIndex(selectedIndex) ? '<span class="today-chip catchup-chip">Catch-up</span>' : '');
+    dayTitleEl.innerHTML = `<h2>${title}</h2>${chip}`;
     if(day.type === 'rest'){
       dayMetaEl.textContent = '';
     } else {
@@ -1555,8 +1613,14 @@
     const isToday = selectedIndex === todayIndex();
     const day = SCHEDULE[selectedIndex];
     if(isToday || day.type === 'rest'){ previewBannerEl.innerHTML = ''; return; }
-    previewBannerEl.innerHTML = `<div class="preview-banner">
-      <span>Previewing ${day.label} — logging only works on the actual day.</span>
+    const catching = isCatchUpIndex(selectedIndex);
+    const msg = !catching
+      ? `Previewing ${day.label} — logging only works on the actual day.`
+      : (isDayComplete(getSelectedDateStr(), day.type)
+          ? `${day.label}'s workout is caught up. Your streak is safe.`
+          : `Catching up ${day.label}'s workout. Finish it today to keep your streak.`);
+    previewBannerEl.innerHTML = `<div class="preview-banner${catching ? ' catchup' : ''}">
+      <span>${msg}</span>
       <button type="button" id="jumpToday">Today</button>
     </div>`;
     document.getElementById('jumpToday').addEventListener('click', () => {
@@ -1565,14 +1629,25 @@
     });
   }
 
+  function catchUpBannerHTML(){
+    if(selectedIndex !== todayIndex() || !catchUpAvailable()) return '';
+    const ds = yesterdayStr();
+    const type = SCHEDULE[todayIndex() - 1].type;
+    if(isDayComplete(ds, type) || data._meta?.missReasons?.[ds]) return '';
+    return `<div class="catchup-banner">
+      <span>⏳ Yesterday's ${DAY_TITLE[type]} isn't done. You have until midnight to catch up and keep your streak.</span>
+      <button type="button" data-action="gocatchup">Do it now</button>
+    </div>`;
+  }
+
   function renderCards(){
     const day = SCHEDULE[selectedIndex];
-    let html = '';
+    let html = catchUpBannerHTML();
     if(day.type === 'rest'){
       const msg = REST_MESSAGES[Math.floor(Math.random()*REST_MESSAGES.length)];
       html += `<div class="rest-card"><h3>Rest up</h3><p>${msg}</p></div>`;
     } else {
-      const locked = selectedIndex !== todayIndex();
+      const locked = !canLogIndex(selectedIndex);
       const list = exercisesFor(day.type, getSelectedDateStr());
       const fillBtn = (!locked && hasAnyHistory(day.type))
         ? `<button class="fill-all-btn" type="button" data-action="fillall" data-day="${day.type}">↻ Fill all weights from last time</button>`
@@ -1679,6 +1754,12 @@
       detailBtn.classList.toggle('open', expandedDetails.has(id));
       return;
     }
+    if(e.target.closest('[data-action="gocatchup"]')){
+      selectedIndex = todayIndex() - 1;
+      renderAll();
+      window.scrollTo({top:0, behavior:'smooth'});
+      return;
+    }
     const copyBtn = e.target.closest('.copy-btn');
     if(copyBtn){
       const exId = copyBtn.dataset.ex;
@@ -1686,7 +1767,7 @@
       const ex = EXERCISES.find(x => x.id === exId && x.day.includes(day.type));
       const last = lastSessionSets(exId);
       if(last && ex){
-        const sets = ensureToday(exId, ex);
+        const sets = ensureDate(logDate(), exId, ex);
         sets.forEach((s, i) => {
           const src = last[i] || last[last.length-1];
           if(ex.type==='weight'){ s.weight = src.weight; s.reps = src.reps; }
@@ -1709,7 +1790,7 @@
       const exId = sameWtBtn.dataset.ex;
       const day = SCHEDULE[selectedIndex];
       const ex = EXERCISES.find(x => x.id === exId && x.day.includes(day.type));
-      const sets = ensureToday(exId, ex);
+      const sets = ensureDate(logDate(), exId, ex);
       const w = sets[0].weight;
       if(w){
         sets.forEach(s => { s.weight = w; });
@@ -1725,7 +1806,8 @@
       const idx = Number(row.dataset.idx);
       const day = SCHEDULE[selectedIndex];
       const ex = EXERCISES.find(x => x.id === exId && x.day.includes(day.type));
-      const sets = ensureToday(exId, ex);
+      const ld = logDate();
+      const sets = ensureDate(ld, exId, ex);
 
       if(!sets[idx].done){
         let hasData = false;
@@ -1739,19 +1821,23 @@
         }
       }
 
-      const wasComplete = isDayComplete(todayStr(), day.type);
+      const wasComplete = isDayComplete(ld, day.type);
       const oldPR = computePR(exId, ex);
       sets[idx].done = !sets[idx].done;
       if(sets[idx].done && navigator.vibrate){ try{ navigator.vibrate(15); }catch(e){} }
+      if(sets[idx].done && ld !== todayStr()){
+        if(!data._meta.catchUp) data._meta.catchUp = {};
+        data._meta.catchUp[ld] = todayStr();
+      }
       row.classList.toggle('is-done', sets[idx].done);
       checkBtn.textContent = sets[idx].done ? '✓' : '';
       const card = document.querySelector(`.card[data-card="${exId}"]`);
       card.classList.toggle('stamped', sets.every(s => s.done));
       persist();
-      const dayJustCompleted = !wasComplete && isDayComplete(todayStr(), day.type);
+      const dayJustCompleted = !wasComplete && isDayComplete(ld, day.type);
       if(sets[idx].done){
         primeAudio();
-        markSessionStarted();
+        markSessionStarted(ld);
         if(!dayJustCompleted) startRest(ex.rest);
       }
       renderAll();
@@ -1761,7 +1847,7 @@
         showToast(`🏆 New PR — ${ex.name}: ${newPR}`);
       }
       if(dayJustCompleted){
-        showSessionComplete(day.type);
+        showSessionComplete(day.type, ld);
       }
     }
   });
@@ -1795,7 +1881,7 @@
     const idx = Number(row.dataset.idx);
     const day = SCHEDULE[selectedIndex];
     const ex = EXERCISES.find(x => x.id === exId && x.day.includes(day.type));
-    const sets = ensureToday(exId, ex);
+    const sets = ensureDate(logDate(), exId, ex);
     sets[idx][input.dataset.field] = input.value;
     persist();
   });
@@ -1817,7 +1903,7 @@
     if(!data._meta.missReasons) data._meta.missReasons = {};
     const startDate = data._meta.startDate;
     const cursor = new Date();
-    cursor.setDate(cursor.getDate() - 1);
+    cursor.setDate(cursor.getDate() - 2);
     const ds = cursor.toLocaleDateString('en-CA');
     if(startDate && ds < startDate) return null;
     const type = getScheduleTypeForDate(cursor);
